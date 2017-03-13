@@ -1,0 +1,23 @@
+{'chr1': [{'chromEnd': 3195984,
+           'chromStart': 3195983,
+           'coordStrand': '-',
+           'name': 'uc007aet.1',
+           'score': 1,
+           'startCoord': 195982,
+           'strand': '-'},
+          {'chromEnd': 4832909,
+           'chromStart': 4832908,
+           'coordStrand': '+',
+           'name': 'uc007afg.1',
+           'score': 1,
+           'startCoord': 1832907,
+           'strand': '+'},
+          {'chromEnd': 4836817,
+           'chromStart': 4836816,
+           'coordStrand': '+',
+           'name': 'uc007afh.1',
+           'score': 1,
+           'startCoord': 1836815,
+           'strand': '+'}]}
+#1_query	A_filename=" ../test.bed "	A_bp= 6 	A_regions= 3
+#2_fields	abs(z-score)	z-score	p-val	B_name	B_filename	bp_overlap(obs/exp)	B_bp	B_regions	A_region_overlaps(obs/exp)	B_region_overlaps(obs/exp)	region_overlap_z-score	region_overlap_p-val
