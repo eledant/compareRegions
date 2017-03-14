@@ -9,4 +9,7 @@ class Data(dict):
 				self[ attributes[i] ] = int(values[i])
 			else:
 				self[ attributes[i] ] = values[i]
-		
+	
+	# Return the size of the region
+	def size(self):
+		return self['chromEnd'] - self['chromStart']

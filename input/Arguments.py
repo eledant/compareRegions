@@ -10,7 +10,6 @@ Options:
 	-v 		  Verbose output 					[default: False]
 	-m <arg>	  Model (nil|rel|rel_reg|pos|pos_sample)		[default: rel]
 	-s <arg>	  Sample region size (required for -m pos_sample) 	[default: 1000]
-
 """
 from docopt import docopt
 import re

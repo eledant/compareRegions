@@ -1,20 +1,23 @@
 from Data import Data
-import re, random
+import re, random, pprint, copy
 
 # A dictonary with the chromosom number as key and a list of Data as value
 class Dataset(dict):
 
 	# Open the file and call the 'getData' function
-	def __init__(self, filename):
-		self.order = []
-		try:
-			FILE = open(filename, 'r') 
-			self.getData(FILE)
-		except IOError:
-    			print "Could not read file:", filename
-    			exit()
-		finally:
-   			FILE.close()
+	def __init__(self, filename=None):
+		if filename:
+			self.order = []
+			try:
+				FILE = open(filename, 'r') 
+				self.getData(FILE)
+			except IOError:
+    				print "Could not read file:", filename
+    				exit()
+			finally:
+   				FILE.close()
+
+	
 	
 	# Extract Data from 'FILE', sort them by the 'region_name'
 	def getData(self, FILE):
@@ -48,6 +51,7 @@ class Dataset(dict):
 			pos += data['chromEnd'] - data['chromStart'] + 1
 			data['endCoord'] = pos - 1
 	
+
 	# Calculate the regions coordinates of the 'A' and 'B' files
 	def calcDataCoords(self, genome):
 		for region in self:		
@@ -67,32 +71,92 @@ class Dataset(dict):
 					if 'strand' in data:
 						data['coordStrand'] = data['strand']
 
+
 	# Create n randomizations of the dataset
 	def randomize(self, args, refGenome):
+		randGenome = copy.deepcopy(refGenome)
 		if args['-r']:
 			random.seed()
-		for nbRandom in range( args['-n'] ):
+		for nbRandom in range( int(args['-n']) ):
 			if args['-m'] == 'rel':
-				refGenome.randomizeGenome()
+				# Copy
+				randGenome.randomizeGenome()
+				self.remapData(randGenome)
 
 
+	# Randomize a genome dataset
 	def randomizeGenome(self):
-		strand = ['-', '+']
-		randomStart = random.randint(0, self.calcSize())
+		# Change the coordinates
+		def remapGenome(data, lastCoord):
+			data['startCoord'] = lastCoord + 1
+			data['endCoord'] = data['startCoord'] + (data['chromEnd'] - data['chromStart'])			
+			return data['endCoord']
 
+		lastCoord = -1
 		regions = self.keys()
 		random.shuffle(regions)
-		for region in regions:		
-			data = self[region][0]
-			data['strand'] = strand[ random.randint(0,1) ]
+		firstRegion = regions.pop(0)
+
+		data = self[firstRegion][0]
+		data['strand'] = random.choice(['-', '+'])
+		randomStart = random.randint( data['chromStart'], data['chromEnd'] )
+		self[firstRegion].append( data.copy() )
+		if data['strand'] == '+':
+			data['chromStart'] = randomStart
+			self[firstRegion][1]['chromEnd'] = randomStart - 1
+		else:
+			data['chromEnd'] = randomStart
+			self[firstRegion][1]['chromStart'] = randomStart + 1
+		lastCoord = remapGenome( data, lastCoord )		
+
+		for region in regions:
+			self[region][0]['strand'] = random.choice(['-', '+'])
+			lastCoord = remapGenome( self[region][0], lastCoord )
+		remapGenome( self[firstRegion][1], lastCoord )
+		
+
+	# Randomize a file dataset with new coordinates
+	def remapData(self, randGenome):
+		def browseGenome(data, genome):
 			
-				
-	def calcSize():
-		size = 0
+
+		newData = Dataset()
 		for region in self:		
 			for data in self[region]:
-				size += data['chromEnd'] - data['chromStart'] + 1
-		return size
+				startCoord = data['startCoord']
+				endCoord = startCoord + ( data['chromEnd'] - data['chromStart'] )
+				coordStrand = '+'
+				if data['coordStrand']:
+					coordStrand = data['coordStrand']
+				
+				for region in randGenome:		
+					for dataGenome in randGenome[region]:
+						if dataGenome['endCoord'] > startCoord:
+							newChrom = region
+							if dataGenome['coordStrand']:
+								if dataGenome['coordStrand'] == '-':
+									chromEnd = dataGenome['chromEnd'] - (startCoord - dataGenome['startCoord'])
+									chromStart = chromEnd - (endCoord - startCoord)
+									if coordStrand == '+':
+										strand = '-'
+									else:
+										strand = '+'
+								else:
+									chromStart = dataGenome['chromStart'] + (startCoord - dataGenome['startCoord'])
+									chromEnd = chromStart + (endCoord - startCoord)
+									strand = coordStrand
+							if newChrom not in newData:
+								newData[newChrom] = []	
+							values = ['chromStart', 'chromEnd', 'score', 'strand', 'startCoord', 'coordStrand']
+							attributes = [chromStart, chromEnd, data['score'], strand, startCoord, coordStrand ] 
+							newData[newChrom].append( Data(values, attributes) )
+							if data['oldChrom']:
+								newData[newChrom][-1]['oldChrom'] = data['oldChrom']
+							else:
+								newData[newChrom][-1]['oldChrom'] = region
+							
+
+
 
 
 
