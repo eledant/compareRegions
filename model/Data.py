@@ -5,11 +5,7 @@ class Data(dict):
 	def __init__(self, values, attributes):
 		length = min( len(values), len(attributes) )
 		for i in range(length):
-			if values[i].isdigit():
+			if str(values[i]).isdigit():
 				self[ attributes[i] ] = int(values[i])
 			else:
 				self[ attributes[i] ] = values[i]
-	
-	# Return the size of the region
-	def size(self):
-		return self['chromEnd'] - self['chromStart']
