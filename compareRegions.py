@@ -32,12 +32,14 @@ if __name__ == '__main__':
 	# Create a Dataset object based on the <A_file>
 	fileA = Dataset( args['<A_file>'] )
 	fileA.calcDataCoords(refGenome)
+	pprint.pprint(fileA)
 
 	# Print output header
 	#output_header(args, fileA)
 
 	# Create n randomizations of the <A_file>
 	fileA.randomize(args, refGenome)
+	pprint.pprint(fileA)
 
 	# Foreach <B_files>
 

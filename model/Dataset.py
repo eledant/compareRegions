@@ -79,9 +79,11 @@ class Dataset(dict):
 			random.seed()
 		for nbRandom in range( int(args['-n']) ):
 			if args['-m'] == 'rel':
-				# Copy
 				randGenome.randomizeGenome()
-				self.remapData(randGenome)
+				print "\t---------------------"
+				pprint.pprint(randGenome)
+				print "\t---------------------"
+				self.remapData(refGenome, randGenome)
 
 
 	# Randomize a genome dataset
@@ -116,51 +118,22 @@ class Dataset(dict):
 		
 
 	# Randomize a file dataset with new coordinates
-	def remapData(self, randGenome):
-		newData = Dataset()
-		for region in self:		
-			for data in self[region]:
-				startCoord = data['startCoord']
-				endCoord = startCoord + ( data['chromEnd'] - data['chromStart'] )
-				coordStrand = '+'
-				if 'coordStrand' in data:
-					coordStrand = data['coordStrand']
-				
-				done = False
-				for region in randGenome:		
-					for dataGenome in randGenome[region]:
-						if dataGenome['endCoord'] > startCoord and not done:
-							newChrom = region
-							if 'strand' in dataGenome and dataGenome['strand'] == '-':
-								chromEnd = dataGenome['chromEnd'] - (startCoord - dataGenome['startCoord'])
-								chromStart = chromEnd - (endCoord - startCoord)
-								if coordStrand == '+':
-									strand = '-'
-								else:
-										strand = '+'
-							else:
-								chromStart = dataGenome['chromStart'] + (startCoord - dataGenome['startCoord'])
-								chromEnd = chromStart + (endCoord - startCoord)
-								strand = coordStrand
-							if newChrom not in newData:
-								newData[newChrom] = []	
-							values = ['chromStart', 'chromEnd', 'score', 'strand', 'startCoord', 'coordStrand']
-							attributes = [chromStart, chromEnd, data['score'], strand, startCoord, coordStrand ] 				
-							newData[newChrom].append( Data(attributes, values) )
-							newData[newChrom][-1]['oldChrom'] = region
-							done = True
-							
-							#if endCoord > dataGenome['endCoord'] and dataGenome['strand']:
-							#	if dataGenome['strand'] == '-':
-							#	 	newData[newChrom][-1]['chromStart'] = dataGenome['chromStart']
-							#	else:
-							#		newData[newChrom][-1]['chromEnd'] = dataGenome['chromEnd']
-							#	startCoord = (dataGenome['endCoord'] + 1) % self.size()
-							#	overhang = endCoord - dataGenome['endCoord']
-							#	endCoord = startCoord + overhang - 1
-		pprint.pprint(newData)
-			
+	def remapData(self, refGenome, randGenome):
+		for chrom in self:
+			for data in self[chrom]:
+				refStartCoord = refGenome[chrom][0]['startCoord']
+				randDataGenome = randGenome[chrom][0]
+				diffStart = 0
+				if data['chromStart'] < randDataGenome['chromStart'] or data['chromEnd'] >= randDataGenome['chromEnd']:
+					randDataGenome = randGenome[chrom][1]
+				if len(randGenome[chrom]) == 2:
+					diffStart = randDataGenome['chromStart'] - refGenome[chrom][0]['chromStart']
+				data['startCoord'] = randDataGenome['startCoord'] + (data['startCoord'] - refStartCoord) - diffStart
+				data['endCoord'] = data['startCoord'] + (data['chromEnd'] - data['chromStart'] )
+				if randDataGenome['strand'] != data['strand']:
+					data['coordStrand'] = randDataGenome['strand']
 
+	# Calculate the total size of the dataset 
 	def size(self):
 		size = 0
 		for region in self:		
