@@ -40,20 +40,18 @@ class Arguments(dict):
 				errorList.append( "'-s' option only takes an integer as argument." )
 		#Files test
 		if not os.path.isfile(self['<genome_file>']):
-			errorList.append( "<genome_file> don't exist or isn't a file." )
+			errorList.append( "The genome file \"" + self['<genome_file>'] + "\" don't exist or isn't a file." )
 		elif re.search('\.bed$', self['<genome_file>']) is None and re.search('\.bedGraph$', self['<genome_file>']) is None:
-			errorList.append( "<genome_file> must be a '.bed' or '.bedGraph' file." )
+			errorList.append( "The genome file \"" + self['<genome_file>'] + "\" must be a '.bed' or '.bedGraph' file." )
 		if not os.path.isfile(self['<A_file>']):
-			errorList.append( "<A_file> don't exist or isn't a file." )
+			errorList.append( "The A file \"" + self['<A_file>'] + "\" don't exist or isn't a file." )
 		elif re.search('\.bed$', self['<A_file>']) is None and re.search('\.bedGraph$', self['<A_file>']) is None:
-			errorList.append( "<A_file> must be a '.bed' or '.bedGraph' file." )
+			errorList.append( "The A file \"" + self['<A_file>'] + "\" must be a '.bed' or '.bedGraph' file." )
 		for fileB in self['<B_files>']:
 			if not os.path.isfile(fileB):
-				errorList.append( "<B_files> don't exist or isn't a file." )
-				break
+				errorList.append( "The B file \"" + fileB + "\" don't exist or isn't a file." )
 			elif re.search('\.bed$', fileB) is None and re.search('\.bedGraph$', fileB) is None:
-				errorList.append( "<B_files> must be a '.bed' or '.bedGraph' files." )
-				break
+				errorList.append( "The B file \"" + fileB + "\" must be a '.bed' or '.bedGraph' files." )
 		# Print the errors	
 		if errorList:
 			for e in errorList: print e

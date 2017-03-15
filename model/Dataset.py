@@ -124,14 +124,25 @@ class Dataset(dict):
 				refStartCoord = refGenome[chrom][0]['startCoord']
 				randDataGenome = randGenome[chrom][0]
 				diffStart = 0
-				if data['chromStart'] < randDataGenome['chromStart'] or data['chromEnd'] >= randDataGenome['chromEnd']:
-					randDataGenome = randGenome[chrom][1]
-				if len(randGenome[chrom]) == 2:
-					diffStart = randDataGenome['chromStart'] - refGenome[chrom][0]['chromStart']
-				data['startCoord'] = randDataGenome['startCoord'] + (data['startCoord'] - refStartCoord) - diffStart
-				data['endCoord'] = data['startCoord'] + (data['chromEnd'] - data['chromStart'] )
+				if (data['chromStart'] < randDataGenome['chromEnd'] and data['chromEnd'] > randDataGenome['chromEnd']) or (data['chromStart'] < randDataGenome['chromStart'] and data['chromEnd'] > randDataGenome['chromStart']):
+					data['tag'] = 'split'
+					if randDataGenome['strand'] == '+':
+						data['startCoord'] = randGenome[chrom][1]['startCoord'] + (data['startCoord'] - refStartCoord)
+						data['endCoord'] = randGenome[chrom][0]['endCoord'] - (refGenome[chrom][0]['chromEnd'] - data['chromEnd'])
+					else:
+						data['startCoord'] = randGenome[chrom][0]['startCoord'] + (data['startCoord'] - refStartCoord)
+						data['endCoord'] = randGenome[chrom][1]['endCoord'] - (refGenome[chrom][0]['chromEnd'] - data['chromEnd'])
+				else:
+					if data['chromStart'] < randDataGenome['chromStart'] or data['chromEnd'] >= randDataGenome['chromEnd']:
+						randDataGenome = randGenome[chrom][1]
+					if len(randGenome[chrom]) == 2:
+						diffStart = randDataGenome['chromStart'] - refGenome[chrom][0]['chromStart']
+					data['startCoord'] = randDataGenome['startCoord'] + (data['startCoord'] - refStartCoord) - diffStart
+					data['endCoord'] = data['startCoord'] + (data['chromEnd'] - data['chromStart'] )
+				
 				if randDataGenome['strand'] != data['strand']:
 					data['coordStrand'] = randDataGenome['strand']
+
 
 	# Calculate the total size of the dataset 
 	def size(self):
@@ -140,7 +151,11 @@ class Dataset(dict):
 			for data in self[region]:
 				size += data['chromEnd'] - data['chromStart'] +1
 
-
+	# Print remap data
+	def printRemapData(self, randGenome):
+		for chrom in self:
+			for data in self[chrom]:
+				print data
 
 		
 
