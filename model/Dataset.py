@@ -92,10 +92,10 @@ class Dataset(dict):
 			# Preserve relational structure at all sub-region scales (default): permute dataset regions ### METHOD CHANGE
 			if args['-m'] == 'rel':
 				randGenome.randomizeGenome()
-				randFileA = copy.deepcopy(self)
-				randFileA.remapData(refGenome, randGenome)
-				randFileA.printRemapData(randGenome)
-		return randFileA
+				randFile = copy.deepcopy(self)
+				randFile.remapData(refGenome, randGenome)
+				randFile.printRemapData(randGenome)
+		return randFile
 
 
 	##################################
@@ -130,7 +130,7 @@ class Dataset(dict):
 			data['chromStart'] = randomStart
 			self[firstRegion][1]['chromEnd'] = randomStart - 1
 		else:
-			data['chromEnd'] = randomStart
+			data['chromEnd'] = randomStart 
 			self[firstRegion][1]['chromStart'] = randomStart + 1
 		lastCoord = remapGenome( data, lastCoord )		
 		# Calculate new coordinates
@@ -161,10 +161,11 @@ class Dataset(dict):
 						data['startCoord'] = randGenome[chrom][0]['startCoord'] + (data['startCoord'] - refStartCoord)
 						data['endCoord'] = randGenome[chrom][1]['endCoord'] - (refGenome[chrom][0]['chromEnd'] - data['chromEnd'])
 				else:
-					# If data is on the other part of the split chromosome
-					if data['chromStart'] < randDataGenome['chromStart'] or data['chromEnd'] >= randDataGenome['chromEnd']:
-						randDataGenome = randGenome[chrom][1]
+					# If the chromosome is split in two
 					if len(randGenome[chrom]) == 2:
+						# If the data are on the other part of the split chromosome	
+						if data['chromStart'] < randDataGenome['chromStart'] or data['chromEnd'] > randDataGenome['chromEnd']:
+							randDataGenome = randGenome[chrom][1]
 						diffStart = randDataGenome['chromStart'] - refGenome[chrom][0]['chromStart']
 					# Calculate new coordinates
 					data['startCoord'] = randDataGenome['startCoord'] + (data['startCoord'] - refStartCoord) - diffStart
@@ -192,11 +193,11 @@ class Dataset(dict):
 	##################################
 	def printRemapData(self, randGenome):
 		print "Name\tchromStart\tchromEnd\tstrand\tstartCoord\tendCoord\tcoordStrand\toldStartCoord"
-		print "###########################################################################################"
+		print "##########################################################################"
 		for chrom in self:
 			for randData in randGenome[chrom]:
 				print chrom, "\t", randData['chromStart'], "\t", randData['chromEnd'], "\t", randData['strand'], "\t", randData['startCoord'], "\t", randData['endCoord']
 			for data in self[chrom]:
 				print data['name'], "\t", data['chromStart'], "\t", data['chromEnd'], "\t", data['strand'], "\t", data['startCoord'], "\t", data['endCoord'], "\t", data['coordStrand'], "\t", data['oldStartCoord']
-			print "###########################################################################################"
+			print "##########################################################################"
 

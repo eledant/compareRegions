@@ -9,9 +9,3 @@ class Data(dict):
 				self[ attributes[i] ] = int(values[i])
 			else:
 				self[ attributes[i] ] = values[i]
-
-	# Change the coordinates
-	def remapGenome(self, lastCoord):
-		self['startCoord'] = lastCoord + 1
-		self['endCoord'] = self['startCoord'] + (self['chromEnd'] - self['chromStart'])			
-		return self['endCoord']
