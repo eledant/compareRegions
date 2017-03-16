@@ -4,7 +4,9 @@ import re, random, pprint, copy
 # A dictonary with the chromosom number as key and a list of Data as value
 class Dataset(dict):
 
-	# Open the file and call the 'getData' function
+	#####################################################
+	### Open the file and call the 'getData' function ###
+	#####################################################
 	def __init__(self, filename=None):
 		if filename:
 			self.order = []
@@ -18,8 +20,9 @@ class Dataset(dict):
    				FILE.close()
 
 	
-	
-	# Extract Data from 'FILE', sort them by the 'region_name'
+	################################################################
+	### Extract Data from 'FILE', sort them by the 'region_name' ###
+	################################################################
 	def getData(self, FILE):
 		attributes = ['chromStart', 'chromEnd']
 		# Check if it's a BED or BEDGRAPH file
@@ -40,9 +43,12 @@ class Dataset(dict):
 					self[region_name] = []
 				self[region_name].append( Data(values, attributes) )
 				self.order.append( region_name )
-				
 
-	# Calculate the regions position of the genome
+# -----------------------------------------------------------------------------------------
+
+	####################################################
+	### Calculate the regions position of the genome ###
+	####################################################
 	def calcGenomeCoords(self):
 		pos = 0
 		for region in self.order:
@@ -52,7 +58,9 @@ class Dataset(dict):
 			data['endCoord'] = pos - 1
 	
 
-	# Calculate the regions coordinates of the 'A' and 'B' files
+	##################################################################
+	### Calculate the regions coordinates of the 'A' and 'B' files ###
+	##################################################################
 	def calcDataCoords(self, genome):
 		for region in self:		
 			for data in self[region]:
@@ -71,22 +79,28 @@ class Dataset(dict):
 					if 'strand' in data:
 						data['coordStrand'] = data['strand']
 
+# -----------------------------------------------------------------------------------------
 
-	# Create n randomizations of the dataset
+	##############################################
+	### Create n randomizations of the dataset ###
+	##############################################
 	def randomize(self, args, refGenome):
 		randGenome = copy.deepcopy(refGenome)
 		if args['-r']:
 			random.seed()
 		for nbRandom in range( int(args['-n']) ):
+			# Preserve relational structure at all sub-region scales (default): permute dataset regions ### METHOD CHANGE
 			if args['-m'] == 'rel':
 				randGenome.randomizeGenome()
-				print "\t---------------------"
-				pprint.pprint(randGenome)
-				print "\t---------------------"
-				self.remapData(refGenome, randGenome)
+				randFileA = copy.deepcopy(self)
+				randFileA.remapData(refGenome, randGenome)
+				randFileA.printRemapData(randGenome)
+		return randFileA
 
 
-	# Randomize a genome dataset
+	##################################
+	### Randomize a genome dataset ###
+	##################################
 	def randomizeGenome(self):
 		# Change the coordinates
 		def remapGenome(data, lastCoord):
@@ -94,15 +108,24 @@ class Dataset(dict):
 			data['endCoord'] = data['startCoord'] + (data['chromEnd'] - data['chromStart'])			
 			return data['endCoord']
 
+		# Restructurate the genome
+		for chrom in self:
+			if len(self[chrom]) == 2:
+				if self[chrom][1]['chromEnd'] > self[chrom][0]['chromEnd']:
+					self[chrom][0]['chromEnd'] = self[chrom][1]['chromEnd']
+				else:
+					self[chrom][0]['chromStart'] = self[chrom][1]['chromStart']
+				del self[chrom][1]
+		# Initialize variables
 		lastCoord = -1
 		regions = self.keys()
 		random.shuffle(regions)
 		firstRegion = regions.pop(0)
-
 		data = self[firstRegion][0]
 		data['strand'] = random.choice(['-', '+'])
-		randomStart = random.randint( data['chromStart'], data['chromEnd'] )
+		randomStart = random.randint( data['chromStart'], data['chromEnd']-1 )
 		self[firstRegion].append( data.copy() )
+		# Create random starting point
 		if data['strand'] == '+':
 			data['chromStart'] = randomStart
 			self[firstRegion][1]['chromEnd'] = randomStart - 1
@@ -110,20 +133,25 @@ class Dataset(dict):
 			data['chromEnd'] = randomStart
 			self[firstRegion][1]['chromStart'] = randomStart + 1
 		lastCoord = remapGenome( data, lastCoord )		
-
+		# Calculate new coordinates
 		for region in regions:
 			self[region][0]['strand'] = random.choice(['-', '+'])
 			lastCoord = remapGenome( self[region][0], lastCoord )
 		remapGenome( self[firstRegion][1], lastCoord )
 		
 
-	# Randomize a file dataset with new coordinates
+	#####################################################
+	### Randomize a file dataset with new coordinates ###
+	#####################################################
 	def remapData(self, refGenome, randGenome):
 		for chrom in self:
 			for data in self[chrom]:
+				# Initialize variables
 				refStartCoord = refGenome[chrom][0]['startCoord']
 				randDataGenome = randGenome[chrom][0]
 				diffStart = 0
+				data['oldStartCoord'] = data['startCoord']
+				# If data overlap the split chromosome
 				if (data['chromStart'] < randDataGenome['chromEnd'] and data['chromEnd'] > randDataGenome['chromEnd']) or (data['chromStart'] < randDataGenome['chromStart'] and data['chromEnd'] > randDataGenome['chromStart']):
 					data['tag'] = 'split'
 					if randDataGenome['strand'] == '+':
@@ -133,31 +161,42 @@ class Dataset(dict):
 						data['startCoord'] = randGenome[chrom][0]['startCoord'] + (data['startCoord'] - refStartCoord)
 						data['endCoord'] = randGenome[chrom][1]['endCoord'] - (refGenome[chrom][0]['chromEnd'] - data['chromEnd'])
 				else:
+					# If data is on the other part of the split chromosome
 					if data['chromStart'] < randDataGenome['chromStart'] or data['chromEnd'] >= randDataGenome['chromEnd']:
 						randDataGenome = randGenome[chrom][1]
 					if len(randGenome[chrom]) == 2:
 						diffStart = randDataGenome['chromStart'] - refGenome[chrom][0]['chromStart']
+					# Calculate new coordinates
 					data['startCoord'] = randDataGenome['startCoord'] + (data['startCoord'] - refStartCoord) - diffStart
 					data['endCoord'] = data['startCoord'] + (data['chromEnd'] - data['chromStart'] )
-				
+				# Swap strand if data and the genome don't have the same 	### CORRECT????
 				if randDataGenome['strand'] != data['strand']:
 					data['coordStrand'] = randDataGenome['strand']
 
+# -----------------------------------------------------------------------------------------
 
-	# Calculate the total size of the dataset 
-	def size(self):
-		size = 0
-		for region in self:		
-			for data in self[region]:
-				size += data['chromEnd'] - data['chromStart'] +1
-
-	# Print remap data
-	def printRemapData(self, randGenome):
+	##################################
+	### Print the randomize genome ###
+	##################################
+	def printRandomizeGenome(self):
+		print "Name\tchromStart\tchromEnd\tstrand\tstartCoord\tendCoord"
+		print "########################################################################"
 		for chrom in self:
+			for genome in self[chrom]:
+				print chrom, "\t", genome['chromStart'], "\t", genome['chromEnd'], "\t", genome['strand'], "\t", genome['startCoord'], "\t", genome['endCoord']
+		print "########################################################################"
+
+
+	##################################
+	### Print the remapData output ###
+	##################################
+	def printRemapData(self, randGenome):
+		print "Name\tchromStart\tchromEnd\tstrand\tstartCoord\tendCoord\tcoordStrand\toldStartCoord"
+		print "###########################################################################################"
+		for chrom in self:
+			for randData in randGenome[chrom]:
+				print chrom, "\t", randData['chromStart'], "\t", randData['chromEnd'], "\t", randData['strand'], "\t", randData['startCoord'], "\t", randData['endCoord']
 			for data in self[chrom]:
-				print data
-
-		
-
-
+				print data['name'], "\t", data['chromStart'], "\t", data['chromEnd'], "\t", data['strand'], "\t", data['startCoord'], "\t", data['endCoord'], "\t", data['coordStrand'], "\t", data['oldStartCoord']
+			print "###########################################################################################"
 
