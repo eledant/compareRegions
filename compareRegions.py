@@ -40,17 +40,25 @@ if __name__ == '__main__':
 	randFileA = fileA.randomize(args, refGenome)
 
 	# Foreach <B_files>
-	#for fileB_name in args['<B_files>']:
+	for fileB_name in args['<B_files>']:
 
 		# Create a Dataset object based on the <B_file>
-		#fileB = Dataset( fileB_name )
-		#fileB.calcDataCoords(refGenome)
+		fileB = Dataset( fileB_name )
+		fileB.calcDataCoords(refGenome)
+
+		# Compare <A_file> and <B_file>
+		print fileA.compareData(fileB, args)
 
 		# Create n randomizations of the <B_file>
 		#randFileB = fileB.randomize(args, refGenome)
 
 		# Compare randomized <A_file> and randomized <B_file>
+		#randFileA.compareData(randFileB, args)
 
-		# Calculate 2-tailed p-vals for A*B overlaps
+		# Calculate stats
 
 		# Print output
+
+
+
+

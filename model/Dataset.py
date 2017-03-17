@@ -51,8 +51,8 @@ class Dataset(dict):
 	####################################################
 	def calcGenomeCoords(self):
 		pos = 0
-		for region in self.order:
-			data = self[region][0]
+		for chrom in self.order:
+			data = self[chrom][0]
 			data['startCoord'] = pos
 			pos += data['chromEnd'] - data['chromStart'] + 1
 			data['endCoord'] = pos - 1
@@ -62,22 +62,11 @@ class Dataset(dict):
 	### Calculate the regions coordinates of the 'A' and 'B' files ###
 	##################################################################
 	def calcDataCoords(self, genome):
-		for region in self:		
-			for data in self[region]:
-				genomeData = genome[region][0]
-				# Do something? Not in the first row?
-				if 'strand' in genomeData :
-					if genomeData['strand'] == '-':
-						data['startCoord'] = genomeData['endCoord'] - (data['chromEnd'] - genomeData['chromStart'])
-						if 'strand' in data:
-							if data['strand'] == '+':
-								data['coordStrand'] = '-'
-							else:
-								data['coordStrand'] = '+'
-				else:
-					data['startCoord'] = genomeData['startCoord'] + (data['chromStart'] - genomeData['chromStart'])
-					if 'strand' in data:
-						data['coordStrand'] = data['strand']
+		for chrom in self:		
+			for data in self[chrom]:
+				genomeData = genome[chrom][0]
+				data['startCoord'] = genomeData['startCoord'] + (data['chromStart'] - genomeData['chromStart'])
+				data['endCoord'] = data['startCoord'] + (data['chromEnd'] - data['chromStart'])
 
 # -----------------------------------------------------------------------------------------
 
@@ -92,9 +81,8 @@ class Dataset(dict):
 			# Preserve relational structure at all sub-region scales (default): permute dataset regions ### METHOD CHANGE
 			if args['-m'] == 'rel':
 				randGenome.randomizeGenome()
-				randFile = copy.deepcopy(self)
-				randFile.remapData(refGenome, randGenome)
-				randFile.printRemapData(randGenome)
+		randFile = copy.deepcopy(self)
+		randFile.remapData(refGenome, randGenome)
 		return randFile
 
 
@@ -118,26 +106,27 @@ class Dataset(dict):
 				del self[chrom][1]
 		# Initialize variables
 		lastCoord = -1
-		regions = self.keys()
-		random.shuffle(regions)
-		firstRegion = regions.pop(0)
-		data = self[firstRegion][0]
+		chroms = self.keys()
+		random.shuffle(chroms)
+		firstChrom = chroms.pop(0)
+		data = self[firstChrom][0]
 		data['strand'] = random.choice(['-', '+'])
 		randomStart = random.randint( data['chromStart'], data['chromEnd']-1 )
-		self[firstRegion].append( data.copy() )
+		self[firstChrom].append( data.copy() )
 		# Create random starting point
 		if data['strand'] == '+':
 			data['chromStart'] = randomStart
-			self[firstRegion][1]['chromEnd'] = randomStart - 1
+			self[firstChrom][1]['chromEnd'] = randomStart - 1
 		else:
 			data['chromEnd'] = randomStart 
-			self[firstRegion][1]['chromStart'] = randomStart + 1
+			self[firstChrom][1]['chromStart'] = randomStart + 1
+			chroms.reverse()
 		lastCoord = remapGenome( data, lastCoord )		
 		# Calculate new coordinates
-		for region in regions:
-			self[region][0]['strand'] = random.choice(['-', '+'])
-			lastCoord = remapGenome( self[region][0], lastCoord )
-		remapGenome( self[firstRegion][1], lastCoord )
+		for chrom in chroms:
+			self[chrom][0]['strand'] = random.choice(['-', '+'])
+			lastCoord = remapGenome( self[chrom][0], lastCoord )
+		remapGenome( self[firstChrom][1], lastCoord )
 		
 
 	#####################################################
@@ -150,10 +139,9 @@ class Dataset(dict):
 				refStartCoord = refGenome[chrom][0]['startCoord']
 				randDataGenome = randGenome[chrom][0]
 				diffStart = 0
-				data['oldStartCoord'] = data['startCoord']
 				# If data overlap the split chromosome
 				if (data['chromStart'] < randDataGenome['chromEnd'] and data['chromEnd'] > randDataGenome['chromEnd']) or (data['chromStart'] < randDataGenome['chromStart'] and data['chromEnd'] > randDataGenome['chromStart']):
-					data['tag'] = 'split'
+					data['split'] = randGenome[chrom][1]['endCoord']
 					if randDataGenome['strand'] == '+':
 						data['startCoord'] = randGenome[chrom][1]['startCoord'] + (data['startCoord'] - refStartCoord)
 						data['endCoord'] = randGenome[chrom][0]['endCoord'] - (refGenome[chrom][0]['chromEnd'] - data['chromEnd'])
@@ -170,9 +158,34 @@ class Dataset(dict):
 					# Calculate new coordinates
 					data['startCoord'] = randDataGenome['startCoord'] + (data['startCoord'] - refStartCoord) - diffStart
 					data['endCoord'] = data['startCoord'] + (data['chromEnd'] - data['chromStart'] )
-				# Swap strand if data and the genome don't have the same 	### CORRECT????
-				if randDataGenome['strand'] != data['strand']:
-					data['coordStrand'] = randDataGenome['strand']
+
+# -----------------------------------------------------------------------------------------
+	
+	########################################################################
+	### Count overlaps between regions of this A dataset and a B dataset ###
+	########################################################################
+	def compareData(self, datasetB, args):
+		def getOverlap(start1, end1, start2, end2):
+			return min(end1, end2) - max(start1, start2) + 1
+
+		overA, overB, over_bp = 0, 0, 0
+		for chrom in self:
+			if datasetB[chrom]:
+				for dataA in self[chrom]:
+					scoreA = 1
+					if args['-i'] not in ['A', 'AB'] and 'score' in dataA:
+						scoreA = dataA['score']
+					for dataB in datasetB[chrom]:
+						scoreB = 1
+						if args['-i'] not in ['B', 'AB'] and 'score' in dataB:
+							scoreB = dataB['score']
+						if 'split' in dataA or 'split' in dataB:						
+							print "TO DO"
+						# If there are an overlap bewteen A and B
+						elif dataA['endCoord'] >= dataB['startCoord'] or dataB['endCoord'] >= dataA['startCoord']:
+							overlap_regions = scoreA * scoreB
+							over_bp += getOverlap(dataA['startCoord'], dataA['endCoord'], dataB['startCoord'], dataB['endCoord']) * scoreA * scoreB
+		return [overA, overB, over_bp]
 
 # -----------------------------------------------------------------------------------------
 
@@ -192,12 +205,15 @@ class Dataset(dict):
 	### Print the remapData output ###
 	##################################
 	def printRemapData(self, randGenome):
-		print "Name\tchromStart\tchromEnd\tstrand\tstartCoord\tendCoord\tcoordStrand\toldStartCoord"
+		print "Name\tchromStart\tchromEnd\tstrand\tstartCoord\tendCoord\tsplit"
 		print "##########################################################################"
 		for chrom in self:
 			for randData in randGenome[chrom]:
-				print chrom, "\t", randData['chromStart'], "\t", randData['chromEnd'], "\t", randData['strand'], "\t", randData['startCoord'], "\t", randData['endCoord']
+				print chrom, "\t\t", randData['chromStart'], "\t", randData['chromEnd'], "\t", randData['strand'], "\t", randData['startCoord'], "\t", randData['endCoord']
 			for data in self[chrom]:
-				print data['name'], "\t", data['chromStart'], "\t", data['chromEnd'], "\t", data['strand'], "\t", data['startCoord'], "\t", data['endCoord'], "\t", data['coordStrand'], "\t", data['oldStartCoord']
+				split = ''
+				if 'split' in data :
+					split = data['split']
+				print data['name'], "\t", data['chromStart'], "\t", data['chromEnd'], "\t", data['strand'], "\t", data['startCoord'], "\t", data['endCoord'], "\t", split
 			print "##########################################################################"
 
