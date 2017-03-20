@@ -169,6 +169,7 @@ class Dataset(dict):
 			return min(end1, end2) - max(start1, start2) + 1
 
 		overA, overB, over_bp = 0, 0, 0
+		regionA, regionB = [], []
 		for chrom in self:
 			if datasetB[chrom]:
 				for dataA in self[chrom]:
@@ -179,12 +180,49 @@ class Dataset(dict):
 						scoreB = 1
 						if args['-i'] not in ['B', 'AB'] and 'score' in dataB:
 							scoreB = dataB['score']
-						if 'split' in dataA or 'split' in dataB:						
-							print "TO DO"
+						startA = min(dataA['startCoord'], dataA['endCoord'])				
+						endA = max(dataA['startCoord'], dataA['endCoord'])
+						startB = min(dataB['startCoord'], dataB['endCoord'])
+						endB = max(dataB['startCoord'], dataB['endCoord'])
+						print startA, endA, startB, endB
+						# If the chromosome is split in two, change positions to compare with a same scale
+						if 'split' in dataA or 'split' in dataB:
+							diffA, diffB = 0, 0
+							if 'split' in dataA:
+								diffA = dataA['split'] - endA
+							if 'split' in dataB:
+								diffB = dataB['split'] - endB
+							if max(diffA, diffB) == diffA:
+								endA = startA + diffA								
+								startA = 0
+								if 'split' in dataB:
+									endB = startB + diffB
+									startB = diffA - diffB
+								else:
+									endB += diffA
+									startB += diffA 
+							else:
+								endB = startB + diffB
+								startB = 0
+								if 'split' in dataA:
+									endA = startA + diffA
+									startA = diffB - diffA
+								else:
+									endA += diffB
+									startA += diffB
 						# If there are an overlap bewteen A and B
-						elif dataA['endCoord'] >= dataB['startCoord'] or dataB['endCoord'] >= dataA['startCoord']:
-							overlap_regions = scoreA * scoreB
-							over_bp += getOverlap(dataA['startCoord'], dataA['endCoord'], dataB['startCoord'], dataB['endCoord']) * scoreA * scoreB
+						if endA >= startB and endB >= startA:		
+							# Calculate the number of different A and B regions doing an overlapping
+							if scoreA * scoreB >= 1:
+								if dataA not in regionA:
+									overA += 1
+									regionA.append(dataA)
+								if dataB not in regionB:
+									overB += 1
+									regionB.append(dataB)
+							# Calculate the size of the overlap
+							print getOverlap(startA, endA, startB, endB), scoreA * scoreB
+							over_bp += getOverlap(startA, endA, startB, endB) * scoreA * scoreB
 		return [overA, overB, over_bp]
 
 # -----------------------------------------------------------------------------------------
