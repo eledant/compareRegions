@@ -184,7 +184,6 @@ class Dataset(dict):
 						endA = max(dataA['startCoord'], dataA['endCoord'])
 						startB = min(dataB['startCoord'], dataB['endCoord'])
 						endB = max(dataB['startCoord'], dataB['endCoord'])
-						print startA, endA, startB, endB
 						# If the chromosome is split in two, change positions to compare with a same scale
 						if 'split' in dataA or 'split' in dataB:
 							diffA, diffB = 0, 0
@@ -211,7 +210,7 @@ class Dataset(dict):
 									endA += diffB
 									startA += diffB
 						# If there are an overlap bewteen A and B
-						if endA >= startB and endB >= startA:		
+						if endA >= startB and endB >= startA:	
 							# Calculate the number of different A and B regions doing an overlapping
 							if scoreA * scoreB >= 1:
 								if dataA not in regionA:
@@ -221,7 +220,6 @@ class Dataset(dict):
 									overB += 1
 									regionB.append(dataB)
 							# Calculate the size of the overlap
-							print getOverlap(startA, endA, startB, endB), scoreA * scoreB
 							over_bp += getOverlap(startA, endA, startB, endB) * scoreA * scoreB
 		return [overA, overB, over_bp]
 
