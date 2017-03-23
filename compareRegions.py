@@ -82,8 +82,10 @@ if __name__ == '__main__':
 		fileB.calcDataCoords(refGenome)
 
 		# Compare <A_file> and <B_file>
+		print datetime.datetime.now().time()
 		res = fileA.compareData(fileB, args)
 		overlapBP = res[2]
+		print datetime.datetime.now().time()
 		exit()
 
 		# Create n randomizations of the <B_file>
