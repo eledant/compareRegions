@@ -1,21 +1,37 @@
-Arguments : 11 12 26
-refGenome : 11 12 26
-fileA : 11 12 26
-#1_query	A_filename=" ../data_test.bed "	A_bp= 213 	A_regions= 6
-#2_fields	abs(z-score)	z-score	p-val	B_filename	bp_overlap(obs/exp)	B_bp	B_regions	A_region_overlaps(obs/exp)	B_region_overlaps(obs/exp)	region_overlap_z-score	region_overlap_p-val
-randFileA : 11 12 26
-fileB : 11 12 26
-Compare A_B : 11 12 26
-randFileB : 11 12 26
-Compare randA_randB : 11 12 26
-Compare randA_randB : 11 12 26
-Compare randA_randB : 11 12 26
-Compare randA_randB : 11 12 26
-Compare randA_randB : 11 12 26
-Compare randA_randB : 11 12 26
-Compare randA_randB : 11 12 26
-Compare randA_randB : 11 12 26
-Compare randA_randB : 11 12 26
-Compare randA_randB : 11 12 26
-Stats : 11 12 26
-#3_subject	0.993727887945 	-0.993727887945 	0 	../data_test2.bed
+42 91 80 128
+Overlap!
+12
+42 91 203 216
+42 91 270 287
+75 131 80 128
+Overlap!
+49
+75 131 203 216
+75 131 270 287
+198 227 80 128
+TO DO
+198 227 203 216
+Overlap!
+14
+198 227 270 287
+210 224 80 128
+TO DO
+210 224 203 216
+Overlap!
+7
+210 224 270 287
+255 286 80 128
+TO DO
+255 286 203 216
+TO DO
+255 286 270 287
+Overlap!
+17
+250 278 80 128
+TO DO
+250 278 203 216
+TO DO
+250 278 270 287
+Overlap!
+9
+[6, 3, 309]

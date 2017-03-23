@@ -58,28 +58,21 @@ def output_stats(stats, fileB_name):
 if __name__ == '__main__':
 	# Get the command line arguments in a dictionary
 	args = Arguments()
-	now = datetime.datetime.now()
-	print "Arguments :", now.hour, now.minute, now.second
 
 	# Create a Dataset object based on the <genome_file>
 	refGenome = Dataset( args['<genome_file>'] )
 	refGenome.calcGenomeCoords()
-	now = datetime.datetime.now()
-	print "refGenome :", now.hour, now.minute, now.second
+	if args['-v']: refGenome.printReferenceeGenome()
 
 	# Create a Dataset object based on the <A_file>
 	fileA = Dataset( args['<A_file>'] )
 	fileA.calcDataCoords(refGenome)
-	now = datetime.datetime.now()
-	print "fileA :", now.hour, now.minute, now.second
 
 	# Print output header
-	output_header(args, fileA)
+	#output_header(args, fileA)
 
 	# Create n randomizations of the <A_file>
 	randFileA = fileA.randomize(args, refGenome)
-	now = datetime.datetime.now()
-	print "randFileA :", now.hour, now.minute, now.second
 
 	# Foreach <B_files>
 	for fileB_name in args['<B_files>']:
@@ -87,32 +80,24 @@ if __name__ == '__main__':
 		# Create a Dataset object based on the <B_file>
 		fileB = Dataset( fileB_name )
 		fileB.calcDataCoords(refGenome)
-		now = datetime.datetime.now()
-		print "fileB :", now.hour, now.minute, now.second
 
 		# Compare <A_file> and <B_file>
 		res = fileA.compareData(fileB, args)
 		overlapBP = res[2]
-		now = datetime.datetime.now()
-		print "Compare A_B :", now.hour, now.minute, now.second
+		exit()
 
 		# Create n randomizations of the <B_file>
 		randFileB = fileB.randomize(args, refGenome)
-		now = datetime.datetime.now()
-		print "randFileB :", now.hour, now.minute, now.second
 
 		# Compare randomized <A_file> and randomized <B_file>
 		randOverlapBP = []
 		for nbRandom in range( int(args['-n']) ):
 			res = randFileA.compareData(randFileB, args)
 			randOverlapBP.append( res[2] )
-			now = datetime.datetime.now()
-			print "Compare randA_randB :", now.hour, now.minute, now.second
+			print res
 
 		# Calculate stats
 		stats = getStats(overlapBP, randOverlapBP)
-		now = datetime.datetime.now()
-		print "Stats :", now.hour, now.minute, now.second		
 
 		# Print output
 		output_stats(stats, fileB_name)

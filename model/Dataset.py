@@ -42,7 +42,8 @@ class Dataset(dict):
 				if region_name not in self:
 					self[region_name] = []
 				self[region_name].append( Data(values, attributes) )
-				self.order.append( region_name )
+				if region_name not in self.order:
+					self.order.append( region_name )
 
 # -----------------------------------------------------------------------------------------
 
@@ -81,8 +82,10 @@ class Dataset(dict):
 			# Preserve relational structure at all sub-region scales (default): permute dataset regions ### METHOD CHANGE
 			if args['-m'] == 'rel':
 				randGenome.randomizeGenome()
+				if args['-v']: randGenome.printRandomizeGenome()
 		randFile = copy.deepcopy(self)
-		randFile.remapData(refGenome, randGenome)
+		randFile.remapData(randGenome)
+		if args['-v']: randFile.printRemapData(randGenome)
 		return randFile
 
 
@@ -95,69 +98,81 @@ class Dataset(dict):
 			data['startCoord'] = lastCoord + 1
 			data['endCoord'] = data['startCoord'] + (data['chromEnd'] - data['chromStart'])			
 			return data['endCoord']
-
-		# Restructurate the genome
-		for chrom in self:
-			if len(self[chrom]) == 2:
-				if self[chrom][1]['chromEnd'] > self[chrom][0]['chromEnd']:
-					self[chrom][0]['chromEnd'] = self[chrom][1]['chromEnd']
-				else:
-					self[chrom][0]['chromStart'] = self[chrom][1]['chromStart']
-				del self[chrom][1]
+		# Restructure the genome if a chromosome is split in two
+		def restructureGenome(self):
+			firstChrom = self.order[0]
+			lastChrom = self.order[-1]
+			if '_split' in lastChrom:
+				self[firstChrom][0]['chromStart'] = self[lastChrom][0]['chromStart']
+				del self[lastChrom]
+				del self.order[-1]
+		
+		restructureGenome(self)
 		# Initialize variables
 		lastCoord = -1
 		chroms = self.keys()
 		random.shuffle(chroms)
 		firstChrom = chroms.pop(0)
+		lastChrom = firstChrom + '_split'
 		data = self[firstChrom][0]
+		self[lastChrom] = [data.copy()]
+		# Save the order as index for later comparaison
+		self.order = [firstChrom] + chroms[:] + [lastChrom]
+		# Create random starting point
 		data['strand'] = random.choice(['-', '+'])
 		randomStart = random.randint( data['chromStart'], data['chromEnd']-1 )
-		self[firstChrom].append( data.copy() )
-		# Create random starting point
-		if data['strand'] == '+':
-			data['chromStart'] = randomStart
-			self[firstChrom][1]['chromEnd'] = randomStart - 1
-		else:
-			data['chromEnd'] = randomStart 
-			self[firstChrom][1]['chromStart'] = randomStart + 1
-			chroms.reverse()
+		data['chromStart'] = randomStart
+		self[lastChrom][0]['chromEnd'] = randomStart - 1
 		lastCoord = remapGenome( data, lastCoord )		
 		# Calculate new coordinates
+		chroms += [lastChrom]
 		for chrom in chroms:
 			self[chrom][0]['strand'] = random.choice(['-', '+'])
 			lastCoord = remapGenome( self[chrom][0], lastCoord )
-		remapGenome( self[firstChrom][1], lastCoord )
-		
+
 
 	#####################################################
 	### Randomize a file dataset with new coordinates ###
 	#####################################################
-	def remapData(self, refGenome, randGenome):
-		for chrom in self:
+	def remapData(self, randGenome):
+		# Initialize variables
+		self.order = randGenome.order
+		firstChrom = self.order[0]
+		lastChrom = self.order[-1]
+		toDelete = []
+		# Add the split chromosome to the dataset
+		self[lastChrom]= []
+		for chrom in self.order[:-1]:
 			for data in self[chrom]:
-				# Initialize variables
-				refStartCoord = refGenome[chrom][0]['startCoord']
 				randDataGenome = randGenome[chrom][0]
-				diffStart = 0
-				# If data overlap the split chromosome
-				if (data['chromStart'] < randDataGenome['chromEnd'] and data['chromEnd'] > randDataGenome['chromEnd']) or (data['chromStart'] < randDataGenome['chromStart'] and data['chromEnd'] > randDataGenome['chromStart']):
-					data['split'] = randGenome[chrom][1]['endCoord']
-					if randDataGenome['strand'] == '+':
-						data['startCoord'] = randGenome[chrom][1]['startCoord'] + (data['startCoord'] - refStartCoord)
-						data['endCoord'] = randGenome[chrom][0]['endCoord'] - (refGenome[chrom][0]['chromEnd'] - data['chromEnd'])
+				# If the chromosome is split in two
+				if chrom == firstChrom and data['chromStart'] < randDataGenome['chromStart']:
+					data['split'] = True
+					data_split = data.copy()
+					# If data overlap the split chromosome
+					if data['chromEnd'] >= randDataGenome['chromStart']:
+						# Modify the data part on the firstChrom
+						data['chromStart'] = randDataGenome['chromStart']
+						data['startCoord'] = 0
+						data['endCoord'] = data['startCoord'] + (data['chromEnd'] - data['chromStart'] )
+						# Modify the data part on the lastChrom
+						data_split['chromEnd'] = randGenome[lastChrom][0]['chromEnd']
+						data_split['startCoord'] = randGenome[lastChrom][0]['endCoord'] - (data_split['chromEnd'] - data_split['chromStart'])
+						data_split['endCoord'] = randGenome[lastChrom][0]['endCoord']
 					else:
-						data['startCoord'] = randGenome[chrom][0]['startCoord'] + (data['startCoord'] - refStartCoord)
-						data['endCoord'] = randGenome[chrom][1]['endCoord'] - (refGenome[chrom][0]['chromEnd'] - data['chromEnd'])
+						# Modify the data which is only on the lastChrom
+						data_split['startCoord'] = randGenome[lastChrom][0]['startCoord'] + (data_split['chromStart'] - randGenome[lastChrom][0]['chromStart'])
+						data_split['endCoord'] = data_split['startCoord'] + (data_split['chromEnd'] - data_split['chromStart'] )
+						# Save the firstChrom data to delete it later (don't exist now)
+						toDelete.append( data )
+					self[lastChrom].append(data_split)	
 				else:
-					# If the chromosome is split in two
-					if len(randGenome[chrom]) == 2:
-						# If the data are on the other part of the split chromosome	
-						if data['chromStart'] < randDataGenome['chromStart'] or data['chromEnd'] > randDataGenome['chromEnd']:
-							randDataGenome = randGenome[chrom][1]
-						diffStart = randDataGenome['chromStart'] - refGenome[chrom][0]['chromStart']
 					# Calculate new coordinates
-					data['startCoord'] = randDataGenome['startCoord'] + (data['startCoord'] - refStartCoord) - diffStart
+					data['startCoord'] = randDataGenome['startCoord'] + (data['chromStart'] - randDataGenome['chromStart'])
 					data['endCoord'] = data['startCoord'] + (data['chromEnd'] - data['chromStart'] )
+		# Delete the useless regions in the firstChrom
+		self[firstChrom] = [data for data in self[firstChrom] if data not in toDelete]
+			
 
 # -----------------------------------------------------------------------------------------
 	
@@ -165,73 +180,84 @@ class Dataset(dict):
 	### Count overlaps between regions of this A dataset and a B dataset ###
 	########################################################################
 	def compareData(self, datasetB, args):
+		# Return the overlap size		
 		def getOverlap(start1, end1, start2, end2):
 			return min(end1, end2) - max(start1, start2) + 1
-
+		# Return a list of all the data
+		def getRegions(dataset):
+			regions = []
+			for chrom in dataset.order:
+				regions += dataset[chrom]
+			return regions
+		
+		# Initialize variables	
+		scoreRegionA, scoreRegionB = [], []
 		overA, overB, over_bp = 0, 0, 0
-		regionA, regionB = [], []
-		for chrom in self:
-			if datasetB[chrom]:
-				for dataA in self[chrom]:
-					scoreA = 1
-					if args['-i'] not in ['A', 'AB'] and 'score' in dataA:
-						scoreA = dataA['score']
-					for dataB in datasetB[chrom]:
-						scoreB = 1
-						if args['-i'] not in ['B', 'AB'] and 'score' in dataB:
-							scoreB = dataB['score']
-						startA = min(dataA['startCoord'], dataA['endCoord'])				
-						endA = max(dataA['startCoord'], dataA['endCoord'])
-						startB = min(dataB['startCoord'], dataB['endCoord'])
-						endB = max(dataB['startCoord'], dataB['endCoord'])
-						# If the chromosome is split in two, change positions to compare with a same scale
-						if 'split' in dataA or 'split' in dataB:
-							diffA, diffB = 0, 0
-							if 'split' in dataA:
-								diffA = dataA['split'] - endA
-							if 'split' in dataB:
-								diffB = dataB['split'] - endB
-							if max(diffA, diffB) == diffA:
-								endA = startA + diffA								
-								startA = 0
-								if 'split' in dataB:
-									endB = startB + diffB
-									startB = diffA - diffB
-								else:
-									endB += diffA
-									startB += diffA 
-							else:
-								endB = startB + diffB
-								startB = 0
-								if 'split' in dataA:
-									endA = startA + diffA
-									startA = diffB - diffA
-								else:
-									endA += diffB
-									startA += diffB
-						# If there are an overlap bewteen A and B
-						if endA >= startB and endB >= startA:	
-							# Calculate the number of different A and B regions doing an overlapping
-							if scoreA * scoreB >= 1:
-								if dataA not in regionA:
-									overA += 1
-									regionA.append(dataA)
-								if dataB not in regionB:
-									overB += 1
-									regionB.append(dataB)
-							# Calculate the size of the overlap
-							over_bp += getOverlap(startA, endA, startB, endB) * scoreA * scoreB
+		regionsA = getRegions(self)
+		regionsB = getRegions(datasetB)
+		# Swap lists to have the longest in first
+		if len(regionsB) > len(regionsA):
+			tmp = regionsA[:]
+			regionsA = regionsB[:]
+			regionsB = temp[:]
+		
+		for dataA in regionsA:
+			startA = dataA['startCoord']				
+			endA = dataA['endCoord']
+			scoreA = 1
+			if args['-i'] not in ['A', 'AB'] and 'score' in dataA:
+				scoreA = dataA['score']
+			for dataB in regionsB:
+				scoreB = 1
+				if args['-i'] not in ['B', 'AB'] and 'score' in dataB:
+					scoreB = dataB['score']
+				startB = dataB['startCoord']
+				endB = dataB['endCoord']
+
+				print startA, endA, startB, endB
+				# If there are an overlap bewteen A and B
+				if endA >= startB and endB >= startA:	
+					print "Overlap!"
+					# Calculate the number of different A and B regions doing an overlapping
+					if scoreA * scoreB >= 1:
+						if dataA not in scoreRegionA:
+							overA += 1
+							scoreRegionA.append(dataA)
+						if dataB not in scoreRegionB:
+							overB += 1
+							scoreRegionB.append(dataB)
+					# Calculate the size of the overlap
+					print getOverlap(startA, endA, startB, endB)
+					over_bp += getOverlap(startA, endA, startB, endB) * scoreA * scoreB
+				elif startA > endB:
+					print "TO DO"
+
+		print [overA, overB, over_bp]
 		return [overA, overB, over_bp]
 
 # -----------------------------------------------------------------------------------------
 
 	##################################
+	### Print the reference genome ###
+	##################################
+	def printReferenceeGenome(self):
+		print "###REFERENCE GENOME###"
+		print "Name\tchromStart\tchromEnd\tstartCoord"
+		print "##################################################"
+		for chrom in self.order:
+			for genome in self[chrom]:
+				print chrom, "\t", genome['chromStart'], "\t", genome['chromEnd'], "\t",  genome['startCoord']
+		print "##################################################"
+
+
+	##################################
 	### Print the randomize genome ###
 	##################################
 	def printRandomizeGenome(self):
+		print "###RANDOMIZE GENOME###"
 		print "Name\tchromStart\tchromEnd\tstrand\tstartCoord\tendCoord"
 		print "########################################################################"
-		for chrom in self:
+		for chrom in self.order:
 			for genome in self[chrom]:
 				print chrom, "\t", genome['chromStart'], "\t", genome['chromEnd'], "\t", genome['strand'], "\t", genome['startCoord'], "\t", genome['endCoord']
 		print "########################################################################"
@@ -241,15 +267,16 @@ class Dataset(dict):
 	### Print the remapData output ###
 	##################################
 	def printRemapData(self, randGenome):
+		print "###REMAP DATA###"
 		print "Name\tchromStart\tchromEnd\tstrand\tstartCoord\tendCoord\tsplit"
-		print "##########################################################################"
-		for chrom in self:
+		print "#####################################################################################"
+		for chrom in self.order:
 			for randData in randGenome[chrom]:
-				print chrom, "\t\t", randData['chromStart'], "\t", randData['chromEnd'], "\t", randData['strand'], "\t", randData['startCoord'], "\t", randData['endCoord']
+				print ">",chrom, "\t\t", randData['chromStart'], "\t", randData['chromEnd'], "\t", randData['strand'], "\t", randData['startCoord'], "\t", randData['endCoord']
 			for data in self[chrom]:
 				split = ''
 				if 'split' in data :
 					split = data['split']
 				print data['name'], "\t", data['chromStart'], "\t", data['chromEnd'], "\t", data['strand'], "\t", data['startCoord'], "\t", data['endCoord'], "\t", split
-			print "##########################################################################"
+			print "#####################################################################################"
 
