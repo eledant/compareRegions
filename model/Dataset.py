@@ -44,6 +44,8 @@ class Dataset(dict):
 				self[region_name].append( Data(values, attributes) )
 				if region_name not in self.order:
 					self.order.append( region_name )
+		for chrom in self.order:
+			self[chrom] = sorted(self[chrom], key=lambda k: k['chromStart']) 
 
 # -----------------------------------------------------------------------------------------
 
@@ -142,7 +144,7 @@ class Dataset(dict):
 		toDelete = []
 		# Add the split chromosome to the dataset
 		self[lastChrom]= []
-		print self.order
+		#print self.order
 		for chrom in self.order[:-1]:
 			if chrom in self:
 				for data in self[chrom]:
@@ -190,6 +192,7 @@ class Dataset(dict):
 			regions = []
 			for chrom in dataset.order:
 				regions += dataset[chrom]
+			regions = sorted(regions, key=lambda k: k['startCoord']) 
 			return regions
 		
 		# Initialize variables	
@@ -200,12 +203,14 @@ class Dataset(dict):
 		i = 0
 		startIndex = 0
 		for dataA in regionsA:
+			#print ">", dataA['name']
 			startA = dataA['startCoord']				
 			endA = dataA['endCoord']
 			scoreA = 1
 			if args['-i'] not in ['A', 'AB'] and 'score' in dataA:
 				scoreA = dataA['score']
 			i = startIndex
+			indexPossible = True
 			while i < len(regionsB):
 				dataB = regionsB[i]
 				startB = dataB['startCoord']
@@ -217,8 +222,11 @@ class Dataset(dict):
 						scoreB = dataB['score']
 					# Calculate the size of the overlap
 					over_bp += getOverlap(startA, endA, startB, endB) * scoreA * scoreB
-				elif startA > endB:
+					indexPossible = False
+					#print dataB['name'],'Overlap'			
+				elif startA > endB and indexPossible:
 					startIndex = i + 1
+					#print dataB['name'],'Index', i
 				elif endA < startB:
 					break
 				i += 1
@@ -231,13 +239,13 @@ class Dataset(dict):
 	##################################
 	### Print the reference genome ###
 	##################################
-	def printReferenceeGenome(self):
+	def printReferenceGenome(self):
 		print "###REFERENCE GENOME###"
 		print "Name\tchromStart\tchromEnd\tstartCoord"
 		print "##################################################"
 		for chrom in self.order:
 			for genome in self[chrom]:
-				print chrom, "\t", genome['chromStart'], "\t", genome['chromEnd'], "\t",  genome['startCoord']
+				print chrom, "\t", genome['chromStart'], "\t", genome['chromEnd'], "\t",  genome['startCoord'], '\t', genome['name']
 		print "##################################################"
 
 

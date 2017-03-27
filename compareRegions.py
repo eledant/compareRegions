@@ -72,7 +72,7 @@ if __name__ == '__main__':
 	#output_header(args, fileA)
 
 	# Create n randomizations of the <A_file>
-	randFileA = fileA.randomize(args, refGenome)
+	#randFileA = fileA.randomize(args, refGenome)
 
 	# Foreach <B_files>
 	for fileB_name in args['<B_files>']:
