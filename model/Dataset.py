@@ -137,14 +137,20 @@ class Dataset(dict):
 	### Randomize a file dataset with new coordinates ###
 	#####################################################
 	def remapData(self, randGenome):
+		# Set the new chromosome order in the randomize dataset
+		temp_chrom = []
+		for chrom in randGenome.order:
+			if chrom in self.order:
+				temp_chrom.append(chrom)
+		self.order = temp_chrom[:]
+		if 'split' in randGenome.order[-1]:
+			self.order += [ randGenome.order[-1] ]
 		# Initialize variables
-		self.order = randGenome.order
 		firstChrom = self.order[0]
 		lastChrom = self.order[-1]
 		toDelete = []
 		# Add the split chromosome to the dataset
 		self[lastChrom]= []
-		#print self.order
 		for chrom in self.order[:-1]:
 			if chrom in self:
 				for data in self[chrom]:
@@ -196,14 +202,11 @@ class Dataset(dict):
 			return regions
 		
 		# Initialize variables	
-		scoreRegionA, scoreRegionB = [], []
-		overA, overB, over_bp = 0, 0, 0
+		overA, overB, over_bp, i, startIndex, scoreRegionB  = 0, 0, 0, 0, 0, []
 		regionsA = getRegions(self)
 		regionsB = getRegions(datasetB)
-		i = 0
-		startIndex = 0
+		# Loop on all the data in datasetA
 		for dataA in regionsA:
-			#print ">", dataA['name']
 			startA = dataA['startCoord']				
 			endA = dataA['endCoord']
 			scoreA = 1
@@ -211,6 +214,7 @@ class Dataset(dict):
 				scoreA = dataA['score']
 			i = startIndex
 			indexPossible = True
+			# Loop on data in datasetB according to the index
 			while i < len(regionsB):
 				dataB = regionsB[i]
 				startB = dataB['startCoord']
@@ -220,17 +224,23 @@ class Dataset(dict):
 					scoreB = 1
 					if args['-i'] not in ['B', 'AB'] and 'score' in dataB:
 						scoreB = dataB['score']
+					# Calculate the number of overlap
+					if scoreA * scoreB >= 1:
+						if indexPossible:
+							overA += 1
+						if i not in scoreRegionB:
+							overB += 1
+							scoreRegionB.append(i)
 					# Calculate the size of the overlap
 					over_bp += getOverlap(startA, endA, startB, endB) * scoreA * scoreB
 					indexPossible = False
-					#print dataB['name'],'Overlap'			
+				# Set index if possible (condition + never get an overlap for this dataA)
 				elif startA > endB and indexPossible:
 					startIndex = i + 1
-					#print dataB['name'],'Index', i
+				# Break if it's impossible to find overlap
 				elif endA < startB:
 					break
 				i += 1
-		print [overA, overB, over_bp]
 		return [overA, overB, over_bp]
 
 

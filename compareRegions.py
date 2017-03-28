@@ -2,7 +2,7 @@
 from model import Dataset
 from input import Arguments
 import pprint, math, datetime
-
+		#print datetime.datetime.now().time()
 
 ##############################################
 ### Print output header with columns names ###
@@ -41,14 +41,33 @@ def getStats(value, distribution):
 		z_score = (value - mean) / sd
 	else:
 		z_score = 'NaN'
-	return [ z_score, pval, mean, sd]
+	return [z_score, pval, mean, sd]
 	
 
 ##################################
 ### Print output final results ###
 ##################################
-def output_stats(stats, fileB_name):
-	print "#3_subject\t", abs(stats[0]), "\t", stats[0], "\t", stats[1], "\t", fileB_name
+def output_stats(statsBP, statsAB, fileB_name, args):
+	# BP values
+	z_scoreBP = statsBP[0]
+	p_valueBP = statsBP[1]
+	expBP = statsBP[2]
+	p_strBP = 'p ='
+	if p_valueBP == 0:
+		p_valueBP = (2/(int(args['-n'])**2))
+		p_strBP = 'p <'
+	overlapBP = statsBP[4]
+	# AB values
+	z_scoreAB = statsAB[0]
+	p_strAB = 'p ='
+	if p_valueAB == 0:
+		p_valueAB = (2/(int(args['-n'])**2))
+		p_strAB = 'p <'
+	A_exp = statsAB[3]
+	B_exp = statsAB[4]
+		
+
+	print "#3_subject\t", abs(z_scoreBP), "\t", z_scoreBP, "\t", p_strBP, p_valueBP, "\t", fileB_name, "\t", overlapBP, "\t", expBP, "\t", A_exp, "\t", B_exp, "\t", z_scoreAB, "\t", p_strAB, p_valueAB
 
 # -----------------------------------------------------------------------------------------
 
@@ -72,7 +91,7 @@ if __name__ == '__main__':
 	#output_header(args, fileA)
 
 	# Create n randomizations of the <A_file>
-	#randFileA = fileA.randomize(args, refGenome)
+	randFileA = fileA.randomize(args, refGenome)
 
 	# Foreach <B_files>
 	for fileB_name in args['<B_files>']:
@@ -82,27 +101,33 @@ if __name__ == '__main__':
 		fileB.calcDataCoords(refGenome)
 
 		# Compare <A_file> and <B_file>
-		print datetime.datetime.now().time()
 		res = fileA.compareData(fileB, args)
 		overlapBP = res[2]
-		print datetime.datetime.now().time()
-		exit()
+		overlapAB = res[0] * res[1]
 
-		# Create n randomizations of the <B_file>
-		randFileB = fileB.randomize(args, refGenome)
-
-		# Compare randomized <A_file> and randomized <B_file>
 		randOverlapBP = []
+		randOverlapAB = []
+		A_exp, B_exp = 0, 0
 		for nbRandom in range( int(args['-n']) ):
-			res = randFileA.compareData(randFileB, args)
-			randOverlapBP.append( res[2] )
-			print res
 
+			# Create n randomizations of the <B_file>
+			randFileB = fileB.randomize(args, refGenome)
+	
+			# Compare randomized <A_file> and randomized <B_file>
+			res = randFileA.compareData(randFileB, args)
+			randOverlapAB.append( res[0] * res[1] )
+			randOverlapBP.append( res[2] )
+			A_exp += res[0]
+			B_exp += res[1]
+		
 		# Calculate stats
-		stats = getStats(overlapBP, randOverlapBP)
+		A_exp /= (len(res[0]) + 1)
+		B_exp /= (len(res[1]) + 1)
+		statsBP = getStats(overlapBP, randOverlapBP) + [overlapBP]
+		statsAB = getStats(overlapAB, randOverlapAB) + [A_exp, B_exp]
 
 		# Print output
-		output_stats(stats, fileB_name)
+		output_stats(statsBP, statsAB, fileB_name, args)
 
 
 
