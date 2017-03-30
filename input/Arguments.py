@@ -20,7 +20,7 @@ class Arguments(dict):
 
 	# Initialize the dictionary with the command line arguments (keys: <genome_file>, <A_file>, <B_files> or "option name")
 	def __init__(self):
-		self.update( docopt(__doc__, version='1.8') )
+		self.update( docopt(__doc__, version='1.0') )
 		self.checkArguments()
 
 	# Check if the given arguments are syntactically correct

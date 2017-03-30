@@ -5,7 +5,9 @@ class Data(dict):
 	def __init__(self, values, attributes):
 		length = min( len(values), len(attributes) )
 		for i in range(length):
-			if str(values[i]).isdigit():
+			if attributes[i] == 'score':
+				self[ attributes[i] ] = float(values[i])
+			elif str(values[i]).isdigit():
 				self[ attributes[i] ] = int(values[i])
 			else:
 				self[ attributes[i] ] = values[i]

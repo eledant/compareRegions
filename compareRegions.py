@@ -50,26 +50,29 @@ def getStats(value, distribution):
 def output_stats(statsBP, statsAB, fileB_name, args):
 	fileB_name = fileB_name.split('/')
 	# BP values : 0=z_score ; 1=p_value ; 2=expBP ; 4=overlapBP ; 5=totalBP_B ; 6=totalRegions_B
-	if statsBP[0] != 'NaN':
-		z_scoreBP_abs = abs(statsBP[0])
-	else:
-		z_scoreBP_abs = statsBP[0]
 	p_valueBP = statsBP[1]
-	p_strBP = 'p ='
+	p_strBP = 'p='
 	if p_valueBP == 0:
-		p_valueBP = (2/(int(args['-n'])**2))
-		p_strBP = 'p <'
+		p_valueBP = 2/math.pow( int(args['-n']), 2 )
+		p_strBP = 'p<'
 	# AB values : 0=z_score ; 1=p_value ; 2=expAB ; 4=A_exp ; 5=B_exp; 6=overlapA ; 7=overlapB
 	p_valueAB = statsAB[1]
-	p_strAB = 'p ='
+	p_strAB = 'p='
 	if p_valueAB == 0:
-		p_valueAB = (2/(int(args['-n'])**2))
-		p_strAB = 'p <'	
+		p_valueAB = 2/math.pow( int(args['-n']), 2 )
+		p_strAB = 'p<'	
 
-	print "#3_subject\t", z_scoreBP_abs, "\t", statsBP[0], 
-	print "\t", p_strBP, "%.3g\t" % p_valueBP, fileB_name[-1], 
-	print "\t%d/%d\t%d\t%d\t%d/%d\t%d/%d\t" %(statsBP[4], statsBP[2], statsBP[5], statsBP[6],statsAB[6], statsAB[4], statsAB[7], statsAB[5]), 
-	print statsAB[0], "\t", p_strAB, "%.3g" % p_valueAB
+	if statsBP[0] != 'NaN':
+		print "#3_subject\t%.2f\t%.2f" %(abs(statsBP[0]), statsBP[0]),
+	else:
+		print "#3_subject\t", statsBP[0], "\t", statsBP[0],
+	print "\t", "%s%.3g\t" %(p_strBP, p_valueBP), fileB_name[-1], 
+	print "\t%.1f/%.1f\t%d\t%d\t%.1f/%.1f\t%.1f/%.1f\t" %(statsBP[4], statsBP[2], statsBP[5], statsBP[6],statsAB[6], statsAB[4], statsAB[7], statsAB[5]), 
+	if statsAB[0] != 'NaN':
+		print "%.2f" % statsAB[0], 
+	else:
+		print statsAB[0], 
+	print "\t", "%s%.3g" %(p_strAB, p_valueAB)
 
 
 # -----------------------------------------------------------------------------------------
@@ -102,7 +105,6 @@ if __name__ == '__main__':
 		# Create a Dataset object based on the <B_file>
 		fileB = Dataset( fileB_name )
 		fileB.calcDataCoords(refGenome)
-
 
 		# Compare <A_file> and <B_file>
 		overlapA, overlapB, overlapBP =  fileA.compareData(fileB, args)
