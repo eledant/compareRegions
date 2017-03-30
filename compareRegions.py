@@ -29,8 +29,8 @@ def getStats(value, distribution):
 			gt += 1
 		SUM += e
 		tempM = M
-		k += 1
 		M += (e - tempM)/k
+		k += 1
 		S += (e - tempM)*(e - M)
 	pval = 2*(gt/(k-1))
 	if pval > 1:
@@ -48,26 +48,29 @@ def getStats(value, distribution):
 ### Print output final results ###
 ##################################
 def output_stats(statsBP, statsAB, fileB_name, args):
-	# BP values
-	z_scoreBP = statsBP[0]
+	fileB_name = fileB_name.split('/')
+	# BP values : 0=z_score ; 1=p_value ; 2=expBP ; 4=overlapBP ; 5=totalBP_B ; 6=totalRegions_B
+	if statsBP[0] != 'NaN':
+		z_scoreBP_abs = abs(statsBP[0])
+	else:
+		z_scoreBP_abs = statsBP[0]
 	p_valueBP = statsBP[1]
-	expBP = statsBP[2]
 	p_strBP = 'p ='
 	if p_valueBP == 0:
 		p_valueBP = (2/(int(args['-n'])**2))
 		p_strBP = 'p <'
-	overlapBP = statsBP[4]
-	# AB values
-	z_scoreAB = statsAB[0]
+	# AB values : 0=z_score ; 1=p_value ; 2=expAB ; 4=A_exp ; 5=B_exp; 6=overlapA ; 7=overlapB
+	p_valueAB = statsAB[1]
 	p_strAB = 'p ='
 	if p_valueAB == 0:
 		p_valueAB = (2/(int(args['-n'])**2))
-		p_strAB = 'p <'
-	A_exp = statsAB[3]
-	B_exp = statsAB[4]
-		
+		p_strAB = 'p <'	
 
-	print "#3_subject\t", abs(z_scoreBP), "\t", z_scoreBP, "\t", p_strBP, p_valueBP, "\t", fileB_name, "\t", overlapBP, "\t", expBP, "\t", A_exp, "\t", B_exp, "\t", z_scoreAB, "\t", p_strAB, p_valueAB
+	print "#3_subject\t", z_scoreBP_abs, "\t", statsBP[0], 
+	print "\t", p_strBP, "%.3g\t" % p_valueBP, fileB_name[-1], 
+	print "\t%d/%d\t%d\t%d\t%d/%d\t%d/%d\t" %(statsBP[4], statsBP[2], statsBP[5], statsBP[6],statsAB[6], statsAB[4], statsAB[7], statsAB[5]), 
+	print statsAB[0], "\t", p_strAB, "%.3g" % p_valueAB
+
 
 # -----------------------------------------------------------------------------------------
 
@@ -87,8 +90,8 @@ if __name__ == '__main__':
 	fileA = Dataset( args['<A_file>'] )
 	fileA.calcDataCoords(refGenome)
 
-	# Print output header
-	#output_header(args, fileA)
+	# Print output header for the <A_file>
+	output_header(args, fileA)
 
 	# Create n randomizations of the <A_file>
 	randFileA = fileA.randomize(args, refGenome)
@@ -100,19 +103,18 @@ if __name__ == '__main__':
 		fileB = Dataset( fileB_name )
 		fileB.calcDataCoords(refGenome)
 
-		# Compare <A_file> and <B_file>
-		res = fileA.compareData(fileB, args)
-		overlapBP = res[2]
-		overlapAB = res[0] * res[1]
 
-		randOverlapBP = []
-		randOverlapAB = []
-		A_exp, B_exp = 0, 0
+		# Compare <A_file> and <B_file>
+		overlapA, overlapB, overlapBP =  fileA.compareData(fileB, args)
+		overlapAB = overlapA * overlapB
+
+		# Foreach number of randomizations
+		A_exp, B_exp, randOverlapBP, randOverlapAB = 0, 0, [], []
 		for nbRandom in range( int(args['-n']) ):
 
 			# Create n randomizations of the <B_file>
 			randFileB = fileB.randomize(args, refGenome)
-	
+
 			# Compare randomized <A_file> and randomized <B_file>
 			res = randFileA.compareData(randFileB, args)
 			randOverlapAB.append( res[0] * res[1] )
@@ -121,13 +123,17 @@ if __name__ == '__main__':
 			B_exp += res[1]
 		
 		# Calculate stats
-		A_exp /= (len(res[0]) + 1)
-		B_exp /= (len(res[1]) + 1)
-		statsBP = getStats(overlapBP, randOverlapBP) + [overlapBP]
-		statsAB = getStats(overlapAB, randOverlapAB) + [A_exp, B_exp]
+		totalRegions_B, totalBP_B = 0, 0
+		for region in fileB:		
+			for data in fileB[region]:
+				totalRegions_B += 1
+				totalBP_B += data['chromEnd'] - data['chromStart'] + 1
+		A_exp /= int(args['-n'])
+		B_exp /= int(args['-n'])
+		statsBP = getStats(overlapBP, randOverlapBP) + [overlapBP, totalBP_B, totalRegions_B]
+		statsAB = getStats(overlapAB, randOverlapAB) + [A_exp, B_exp, overlapA, overlapB]
 
-		# Print output
+		# Print output for the <B_file>
 		output_stats(statsBP, statsAB, fileB_name, args)
-
 
 

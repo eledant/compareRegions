@@ -228,9 +228,7 @@ class Dataset(dict):
 					if scoreA * scoreB >= 1:
 						if indexPossible:
 							overA += 1
-						if i not in scoreRegionB:
-							overB += 1
-							scoreRegionB.append(i)
+						scoreRegionB.append(i)
 					# Calculate the size of the overlap
 					over_bp += getOverlap(startA, endA, startB, endB) * scoreA * scoreB
 					indexPossible = False
@@ -241,6 +239,7 @@ class Dataset(dict):
 				elif endA < startB:
 					break
 				i += 1
+		overB = len(list(set(scoreRegionB)))
 		return [overA, overB, over_bp]
 
 
