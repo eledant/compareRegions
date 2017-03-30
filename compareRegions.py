@@ -62,17 +62,19 @@ def output_stats(statsBP, statsAB, fileB_name, args):
 		p_valueAB = 2/math.pow( int(args['-n']), 2 )
 		p_strAB = 'p<'	
 
+	output_line = ''
 	if statsBP[0] != 'NaN':
-		print "#3_subject\t%.2f\t%.2f" %(abs(statsBP[0]), statsBP[0]),
+		output_line += "#3_subject\t%.2f\t%.2f" %(abs(statsBP[0]), statsBP[0])
 	else:
-		print "#3_subject\t", statsBP[0], "\t", statsBP[0],
-	print "\t", "%s%.3g\t" %(p_strBP, p_valueBP), fileB_name[-1], 
-	print "\t%.1f/%.1f\t%d\t%d\t%.1f/%.1f\t%.1f/%.1f\t" %(statsBP[4], statsBP[2], statsBP[5], statsBP[6],statsAB[6], statsAB[4], statsAB[7], statsAB[5]), 
+		output_line += "#3_subject\t" + statsBP[0] + "\t" + statsBP[0]
+	output_line += "\t" + "%s%.3g\t" %(p_strBP, p_valueBP) + fileB_name[-1]
+	output_line += "\t%.1f/%.1f\t%d\t%d\t%.1f/%.1f\t%.1f/%.1f\t" %(statsBP[4], statsBP[2], statsBP[5], statsBP[6],statsAB[6], statsAB[4], statsAB[7], statsAB[5])
 	if statsAB[0] != 'NaN':
-		print "%.2f" % statsAB[0], 
+		output_line += "%.2f" % statsAB[0]
 	else:
-		print statsAB[0], 
-	print "\t", "%s%.3g" %(p_strAB, p_valueAB)
+		output_line += statsAB[0]
+	output_line += "\t" + "%s%.3g" %(p_strAB, p_valueAB)
+	return output_line
 
 
 # -----------------------------------------------------------------------------------------
@@ -100,6 +102,7 @@ if __name__ == '__main__':
 	randFileA = fileA.randomize(args, refGenome)
 
 	# Foreach <B_files>
+	output_lines, output_keys = [], []
 	for fileB_name in args['<B_files>']:
 
 		# Create a Dataset object based on the <B_file>
@@ -135,7 +138,18 @@ if __name__ == '__main__':
 		statsBP = getStats(overlapBP, randOverlapBP) + [overlapBP, totalBP_B, totalRegions_B]
 		statsAB = getStats(overlapAB, randOverlapAB) + [A_exp, B_exp, overlapA, overlapB]
 
-		# Print output for the <B_file>
-		output_stats(statsBP, statsAB, fileB_name, args)
+		# Create output for the <B_file>
+		output_lines.append( output_stats(statsBP, statsAB, fileB_name, args) )
+		output_keys.append(statsBP[0])
+
+	# Print output_lines
+	for i in range(len(output_keys)):
+		if output_keys[i] != 'NaN':
+			output_keys[i] = abs(output_keys[i])
+		else:
+			output_keys[i] = 0
+	output_lines = [x for (y,x) in sorted(zip(output_keys,output_lines), reverse=True)]
+	for line in output_lines:
+		print line
 
 
