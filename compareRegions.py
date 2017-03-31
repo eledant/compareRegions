@@ -2,7 +2,7 @@
 from model import Dataset
 from input import Arguments
 import pprint, math, datetime
-		#print datetime.datetime.now().time()
+#print datetime.datetime.now().time()
 
 ##############################################
 ### Print output header with columns names ###
@@ -89,11 +89,12 @@ if __name__ == '__main__':
 	# Create a Dataset object based on the <genome_file>
 	refGenome = Dataset( args['<genome_file>'] )
 	refGenome.calcGenomeCoords()
-	if args['-v']: refGenome.printReferenceeGenome()
+	if args['-v'] in ['all', 'refG']: refGenome.printReferenceGenome()
 
 	# Create a Dataset object based on the <A_file>
 	fileA = Dataset( args['<A_file>'] )
 	fileA.calcDataCoords(refGenome)
+	if args['-v'] in ['all', 'fileA']: fileA.printDataset(refGenome, args['<A_file>'])
 
 	# Print output header for the <A_file>
 	output_header(args, fileA)
@@ -108,6 +109,7 @@ if __name__ == '__main__':
 		# Create a Dataset object based on the <B_file>
 		fileB = Dataset( fileB_name )
 		fileB.calcDataCoords(refGenome)
+		if args['-v'] in ['all', 'fileB']: fileB.printDataset(refGenome, fileB_name)
 
 		# Compare <A_file> and <B_file>
 		overlapA, overlapB, overlapBP =  fileA.compareData(fileB, args)
@@ -142,7 +144,7 @@ if __name__ == '__main__':
 		output_lines.append( output_stats(statsBP, statsAB, fileB_name, args) )
 		output_keys.append(statsBP[0])
 
-	# Print output_lines
+	# Print output_lines sorted output_keys (z_score)
 	for i in range(len(output_keys)):
 		if output_keys[i] != 'NaN':
 			output_keys[i] = abs(output_keys[i])

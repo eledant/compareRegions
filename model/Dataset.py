@@ -81,13 +81,14 @@ class Dataset(dict):
 		if args['-r']:
 			random.seed()
 		for nbRandom in range( int(args['-n']) ):
-			# Preserve relational structure at all sub-region scales (default): permute dataset regions ### METHOD CHANGE
-			if args['-m'] == 'rel':
+			# By default : Shuffle dataset regions et calculate new coordinates according to a new starting point
+			if args['-m'] == 'def':
 				randGenome.randomizeGenome()
-				if args['-v']: randGenome.printRandomizeGenome()
+				if args['-v'] in ['all', 'randG']: randGenome.printRandomizeGenome()
+		# Calculate new coordinates of the data according to the randomize genome
 		randFile = copy.deepcopy(self)
 		randFile.remapData(randGenome)
-		if args['-v']: randFile.printRemapData(randGenome)
+		if args['-v'] in ['all', 'remap']: randFile.printRemapData(randGenome)
 		return randFile
 
 
@@ -152,37 +153,42 @@ class Dataset(dict):
 		# Add the split chromosome to the dataset
 		self[lastChrom]= []
 		for chrom in self.order[:-1]:
-			if chrom in self:
-				for data in self[chrom]:
-					randDataGenome = randGenome[chrom][0]
-					# If the chromosome is split in two
-					if chrom == firstChrom and data['chromStart'] < randDataGenome['chromStart']:
-						data['split'] = True
-						data_split = data.copy()
-						# If data overlap the split chromosome
-						if data['chromEnd'] >= randDataGenome['chromStart']:
-							# Modify the data part on the firstChrom
-							data['chromStart'] = randDataGenome['chromStart']
-							data['startCoord'] = 0
-							data['endCoord'] = data['startCoord'] + (data['chromEnd'] - data['chromStart'] )
-							# Modify the data part on the lastChrom
-							data_split['chromEnd'] = randGenome[lastChrom][0]['chromEnd']
-							data_split['startCoord'] = randGenome[lastChrom][0]['endCoord'] - (data_split['chromEnd'] - data_split['chromStart'])
-							data_split['endCoord'] = randGenome[lastChrom][0]['endCoord']
-						else:
-							# Modify the data which is only on the lastChrom
-							data_split['startCoord'] = randGenome[lastChrom][0]['startCoord'] + (data_split['chromStart'] - randGenome[lastChrom][0]['chromStart'])
-							data_split['endCoord'] = data_split['startCoord'] + (data_split['chromEnd'] - data_split['chromStart'] )
-							# Save the firstChrom data to delete it later (don't exist now)
-							toDelete.append( data )
-						self[lastChrom].append(data_split)	
-					else:
-						# Calculate new coordinates
-						data['startCoord'] = randDataGenome['startCoord'] + (data['chromStart'] - randDataGenome['chromStart'])
+			for data in self[chrom]:
+				randDataGenome = randGenome[chrom][0]
+				# If the chromosome is split in two
+				if chrom == firstChrom and data['chromStart'] < randDataGenome['chromStart']:
+					data['split'] = True
+					data_split = data.copy()
+					# If data overlap the split chromosome
+					if data['chromEnd'] >= randDataGenome['chromStart']:
+						# Modify the data part on the firstChrom
+						data['chromStart'] = randDataGenome['chromStart']
+						data['startCoord'] = 0
 						data['endCoord'] = data['startCoord'] + (data['chromEnd'] - data['chromStart'] )
+						# Modify the data part on the lastChrom
+						data_split['chromEnd'] = randGenome[lastChrom][0]['chromEnd']
+						data_split['startCoord'] = randGenome[lastChrom][0]['endCoord'] - (data_split['chromEnd'] - data_split['chromStart'])
+						data_split['endCoord'] = randGenome[lastChrom][0]['endCoord']
+					else:
+						# Modify the data which is only on the lastChrom
+						data_split['startCoord'] = randGenome[lastChrom][0]['startCoord'] + (data_split['chromStart'] - randGenome[lastChrom][0]['chromStart'])
+						data_split['endCoord'] = data_split['startCoord'] + (data_split['chromEnd'] - data_split['chromStart'] )
+						# Save the firstChrom data to delete it later (don't exist now)
+						toDelete.append( data )
+					self[lastChrom].append(data_split)	
+				else:
+					# Calculate new coordinates
+					data['startCoord'] = randDataGenome['startCoord'] + (data['chromStart'] - randDataGenome['chromStart'])
+					data['endCoord'] = data['startCoord'] + (data['chromEnd'] - data['chromStart'] )
 			# Delete the useless regions in the firstChrom
 			self[firstChrom] = [data for data in self[firstChrom] if data not in toDelete]
-			
+		# Inverse coordinates if '-' strand
+		for chrom in self.order:
+			randDataGenome = randGenome[chrom][0]
+			if randDataGenome['strand'] == '-':
+				for data in self[chrom]:
+					data['endCoord'] = randDataGenome['endCoord'] - (data['startCoord'] - randDataGenome['startCoord'])
+					data['startCoord'] = data['endCoord'] - (data['chromEnd'] - data['chromStart'])
 
 # -----------------------------------------------------------------------------------------
 	
@@ -254,7 +260,7 @@ class Dataset(dict):
 		print "##################################################"
 		for chrom in self.order:
 			for genome in self[chrom]:
-				print chrom, "\t", genome['chromStart'], "\t", genome['chromEnd'], "\t",  genome['startCoord'], '\t', genome['name']
+				print chrom, "\t", genome['chromStart'], "\t", genome['chromEnd'], "\t",  genome['startCoord']
 		print "##################################################"
 
 
@@ -269,6 +275,21 @@ class Dataset(dict):
 			for genome in self[chrom]:
 				print chrom, "\t", genome['chromStart'], "\t", genome['chromEnd'], "\t", genome['strand'], "\t", genome['startCoord'], "\t", genome['endCoord']
 		print "########################################################################"
+
+
+	##################################
+	### Print the remapData output ###
+	##################################
+	def printDataset(self, refGenome, name):
+		print "###ORIGINAL DATA =", name, "###"
+		print "Name\tchromStart\tchromEnd\tstartCoord\tendCoord\tstrand"
+		print "#####################################################################################"
+		for chrom in self.order:
+			for refData in refGenome[chrom]:
+				print ">",chrom, "\t\t", refData['chromStart'], "\t", refData['chromEnd'], "\t", refData['startCoord']
+			for data in self[chrom]:
+				print data['name'], "\t", data['chromStart'], "\t", data['chromEnd'], "\t", data['startCoord'], "\t", data['endCoord'], "\t", data['strand']
+			print "#####################################################################################"
 
 
 	##################################

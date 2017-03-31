@@ -7,9 +7,8 @@ Options:
 	-n <arg>	  Number of randomizations of each dataset to analyze 	[default: 10]
 	-r 		  Random seed 						[default: False]
 	-i <arg>	  Ignore region scores (A|B|AB) 			[default: None]
-	-v 		  Verbose output 					[default: False]
-	-m <arg>	  Model (nil|rel|rel_reg|pos|pos_sample)		[default: rel]
-	-s <arg>	  Sample region size (required for -m pos_sample) 	[default: 1000]
+	-v <arg>	  Verbose output (all|refG|randG|remap|fileA|fileB)	[default: None]
+	-m <arg>	  Model (def)						[default: def]
 """
 from docopt import docopt
 import re
@@ -33,11 +32,11 @@ class Arguments(dict):
 			errorList.append( "'-n' option only takes an positive integer as argument." )
 		if self['-i'] not in ['A','B','AB','None']:
 			errorList.append( "'-i' option only takes 'A', 'B' or 'AB' as argument." )
-		if self['-m'] not in ['nil','rel','rel_reg','pos','pos_sample']:
-			errorList.append( "'-m' option only takes 'nil', 'rel', 'rel_reg', 'pos' or 'pos_sample' as argument." )
-		elif self['-m'] == 'pos_sample':
-			if not self['-s'].isdigit():
-				errorList.append( "'-s' option only takes an integer as argument." )
+		if self['-m'] not in ['def']:
+			errorList.append( "'-m' option only takes 'def' as argument." )
+		if self['-v'] not in ['None', 'all','refG','randG','remap', 'fileA','fileB']:
+			errorList.append( "'-v' option only takes 'all', 'refG', 'randG', 'remap', 'fileA' or 'fileB' as argument." )		
+
 		#Files test
 		if not os.path.isfile(self['<genome_file>']):
 			errorList.append( "The genome file \"" + self['<genome_file>'] + "\" don't exist or isn't a file." )
