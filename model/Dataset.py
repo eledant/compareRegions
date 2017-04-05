@@ -76,15 +76,14 @@ class Dataset(dict):
 	##############################################
 	### Create n randomizations of the dataset ###
 	##############################################
-	def randomize(self, args, refGenome):
+	def randomize(self, refGenome, args):
 		randGenome = copy.deepcopy(refGenome)
 		if args['-r']:
 			random.seed()
-		for nbRandom in range( int(args['-n']) ):
-			# By default : Shuffle dataset regions et calculate new coordinates according to a new starting point
-			if args['-m'] == 'def':
-				randGenome.randomizeGenome()
-				if args['-v'] in ['all', 'randG']: randGenome.printRandomizeGenome()
+		# By default : Shuffle dataset regions et calculate new coordinates according to a new starting point
+		if args['-l'] == 'def':
+			randGenome.randomizeGenome()
+		if args['-v'] in ['all', 'randG']: randGenome.printRandomizeGenome()
 		# Calculate new coordinates of the data according to the randomize genome
 		randFile = copy.deepcopy(self)
 		randFile.remapData(randGenome)
@@ -101,16 +100,7 @@ class Dataset(dict):
 			data['startCoord'] = lastCoord + 1
 			data['endCoord'] = data['startCoord'] + (data['chromEnd'] - data['chromStart'])			
 			return data['endCoord']
-		# Restructure the genome if a chromosome is split in two
-		def restructureGenome(self):
-			firstChrom = self.order[0]
-			lastChrom = self.order[-1]
-			if '_split' in lastChrom:
-				self[firstChrom][0]['chromStart'] = self[lastChrom][0]['chromStart']
-				del self[lastChrom]
-				del self.order[-1]
-		
-		restructureGenome(self)
+
 		# Initialize variables
 		lastCoord = -1
 		chroms = self.keys()
@@ -157,7 +147,6 @@ class Dataset(dict):
 				randDataGenome = randGenome[chrom][0]
 				# If the chromosome is split in two
 				if chrom == firstChrom and data['chromStart'] < randDataGenome['chromStart']:
-					data['split'] = True
 					data_split = data.copy()
 					# If data overlap the split chromosome
 					if data['chromEnd'] >= randDataGenome['chromStart']:
@@ -165,10 +154,12 @@ class Dataset(dict):
 						data['chromStart'] = randDataGenome['chromStart']
 						data['startCoord'] = 0
 						data['endCoord'] = data['startCoord'] + (data['chromEnd'] - data['chromStart'] )
+						data['split'] = True
 						# Modify the data part on the lastChrom
 						data_split['chromEnd'] = randGenome[lastChrom][0]['chromEnd']
 						data_split['startCoord'] = randGenome[lastChrom][0]['endCoord'] - (data_split['chromEnd'] - data_split['chromStart'])
 						data_split['endCoord'] = randGenome[lastChrom][0]['endCoord']
+						data_split['split'] = True
 					else:
 						# Modify the data which is only on the lastChrom
 						data_split['startCoord'] = randGenome[lastChrom][0]['startCoord'] + (data_split['chromStart'] - randGenome[lastChrom][0]['chromStart'])
@@ -208,7 +199,7 @@ class Dataset(dict):
 			return regions
 		
 		# Initialize variables	
-		overA, overB, over_bp, i, startIndex, scoreRegionB  = 0, 0, 0, 0, 0, []
+		overA, overB, over_bp, i, startIndex, scoreRegionB, nameRegionA, nameRegionB  = 0, 0, 0, 0, 0, [], [], []
 		regionsA = getRegions(self)
 		regionsB = getRegions(datasetB)
 		# Loop on all the data in datasetA
@@ -233,8 +224,14 @@ class Dataset(dict):
 					# Calculate the number of overlap
 					if scoreA * scoreB >= 1:
 						if indexPossible:
-							overA += 1
-						scoreRegionB.append(i)
+							if 'split' in dataA:
+								nameRegionA.append(dataA['name'])
+							else:
+								overA += 1
+						if 'split' in dataB:
+							nameRegionB.append(dataB['name'])
+						else:
+							scoreRegionB.append(i)
 					# Calculate the size of the overlap
 					over_bp += getOverlap(startA, endA, startB, endB) * scoreA * scoreB
 					indexPossible = False
@@ -245,7 +242,9 @@ class Dataset(dict):
 				elif endA < startB:
 					break
 				i += 1
-		overB = len(list(set(scoreRegionB)))
+		
+		overA += len(list(set(nameRegionA)))
+		overB = len(list(set(scoreRegionB))) + len(list(set(nameRegionB)))
 		return [overA, overB, over_bp]
 
 
@@ -307,5 +306,4 @@ class Dataset(dict):
 				if 'split' in data :
 					split = data['split']
 				print data['name'], "\t", data['chromStart'], "\t", data['chromEnd'], "\t", data['strand'], "\t", data['startCoord'], "\t", data['endCoord'], "\t", split
-			print "#####################################################################################"
-
+		print "#####################################################################################"

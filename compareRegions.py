@@ -97,10 +97,7 @@ if __name__ == '__main__':
 	if args['-v'] in ['all', 'fileA']: fileA.printDataset(refGenome, args['<A_file>'])
 
 	# Print output header for the <A_file>
-	output_header(args, fileA)
-
-	# Create n randomizations of the <A_file>
-	randFileA = fileA.randomize(args, refGenome)
+	#output_header(args, fileA)
 
 	# Foreach <B_files>
 	output_lines, output_keys = [], []
@@ -115,28 +112,36 @@ if __name__ == '__main__':
 		overlapA, overlapB, overlapBP =  fileA.compareData(fileB, args)
 		overlapAB = overlapA * overlapB
 
-		# Foreach number of randomizations
+		# Foreach M number of randomizations
 		A_exp, B_exp, randOverlapBP, randOverlapAB = 0, 0, [], []
-		for nbRandom in range( int(args['-n']) ):
+		for mRandom in range( int(args['-m']) ):
 
-			# Create n randomizations of the <B_file>
-			randFileB = fileB.randomize(args, refGenome)
+			# Create a randomization of the <A_file>
+			randFileA = fileA.randomize(refGenome, args)
 
-			# Compare randomized <A_file> and randomized <B_file>
-			res = randFileA.compareData(randFileB, args)
-			randOverlapAB.append( res[0] * res[1] )
-			randOverlapBP.append( res[2] )
-			A_exp += res[0]
-			B_exp += res[1]
+			# Foreach N number of randomizations
+			for nRandom in range( int(args['-n']) ):
+
+				# Create a randomization of the <B_file>
+				randFileB = fileB.randomize(refGenome, args)
+
+				# Compare randomized <A_file> and randomized <B_file>
+				res = randFileA.compareData(randFileB, args)
+				randOverlapAB.append( res[0] * res[1] )
+				randOverlapBP.append( res[2] )
+				A_exp += res[0]
+				B_exp += res[1]
 		
 		# Calculate stats
+		print overlapBP
+		pprint.pprint(randOverlapBP)
 		totalRegions_B, totalBP_B = 0, 0
 		for region in fileB:		
 			for data in fileB[region]:
 				totalRegions_B += 1
 				totalBP_B += data['chromEnd'] - data['chromStart'] + 1
-		A_exp /= int(args['-n'])
-		B_exp /= int(args['-n'])
+		A_exp /= float(args['-m']) * float(args['-n'])
+		B_exp /= float(args['-m']) * float(args['-n'])
 		statsBP = getStats(overlapBP, randOverlapBP) + [overlapBP, totalBP_B, totalRegions_B]
 		statsAB = getStats(overlapAB, randOverlapAB) + [A_exp, B_exp, overlapA, overlapB]
 

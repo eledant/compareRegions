@@ -4,11 +4,12 @@
 Usage: compareRegions.py [options] <genome_file> <A_file> <B_files>...
 
 Options:
-	-n <arg>	  Number of randomizations of each dataset to analyze 	[default: 10]
+	-m <arg>	  Number of randomizations for the <A_file> 		[default: 10]
+	-n <arg>	  Number of randomizations for each <B_files>  		[default: 10]
 	-r 		  Random seed 						[default: False]
 	-i <arg>	  Ignore region scores (A|B|AB) 			[default: None]
 	-v <arg>	  Verbose output (all|refG|randG|remap|fileA|fileB)	[default: None]
-	-m <arg>	  Model (def)						[default: def]
+	-l <arg>	  Model (def)						[default: def]
 """
 from docopt import docopt
 import re
@@ -26,13 +27,17 @@ class Arguments(dict):
 	def checkArguments(self):
 		errorList = []
 		# Options test
+		if not self['-m'].isdigit():
+			errorList.append( "'-n' option only takes an integer as argument." )
+		elif self['-m'] <= 0:
+			errorList.append( "'-n' option only takes an positive integer as argument." )
 		if not self['-n'].isdigit():
 			errorList.append( "'-n' option only takes an integer as argument." )
 		elif self['-n'] <= 0:
 			errorList.append( "'-n' option only takes an positive integer as argument." )
 		if self['-i'] not in ['A','B','AB','None']:
 			errorList.append( "'-i' option only takes 'A', 'B' or 'AB' as argument." )
-		if self['-m'] not in ['def']:
+		if self['-l'] not in ['def']:
 			errorList.append( "'-m' option only takes 'def' as argument." )
 		if self['-v'] not in ['None', 'all','refG','randG','remap', 'fileA','fileB']:
 			errorList.append( "'-v' option only takes 'all', 'refG', 'randG', 'remap', 'fileA' or 'fileB' as argument." )		
