@@ -1,5 +1,5 @@
 from Data import Data
-import re, random, pprint, copy, datetime
+import re, random, pprint, copy, datetime, os.path
 
 # A dictonary with the chromosom number as key and a list of Data as value
 class Dataset(dict):
@@ -9,6 +9,7 @@ class Dataset(dict):
 	#####################################################
 	def __init__(self, filename=None):
 		if filename:
+			self.name = filename
 			self.order = []
 			try:
 				FILE = open(filename, 'r') 
@@ -76,18 +77,17 @@ class Dataset(dict):
 	##############################################
 	### Create n randomizations of the dataset ###
 	##############################################
-	def randomize(self, refGenome, args):
+	def randomize(self, refGenome, args, filename):
 		randGenome = copy.deepcopy(refGenome)
 		if args['-r']:
 			random.seed()
 		# By default : Shuffle dataset regions et calculate new coordinates according to a new starting point
 		if args['-l'] == 'def':
-			randGenome.randomizeGenome()
-		if args['-v'] in ['all', 'randG']: randGenome.printRandomizeGenome()
+			randGenome.randomizeGenome()				
 		# Calculate new coordinates of the data according to the randomize genome
 		randFile = copy.deepcopy(self)
 		randFile.remapData(randGenome)
-		if args['-v'] in ['all', 'remap']: randFile.printRemapData(randGenome)
+		if args['-v'] in ['all', 'randG']: randGenome.printDataset(filename)
 		return randFile
 
 
@@ -98,31 +98,43 @@ class Dataset(dict):
 		# Change the coordinates
 		def remapGenome(data, lastCoord):
 			data['startCoord'] = lastCoord + 1
-			data['endCoord'] = data['startCoord'] + (data['chromEnd'] - data['chromStart'])			
+			data['endCoord'] = data['startCoord'] + (data['chromEnd'] - data['chromStart'])
 			return data['endCoord']
 
 		# Initialize variables
 		lastCoord = -1
-		chroms = self.keys()
-		random.shuffle(chroms)
-		firstChrom = chroms.pop(0)
-		lastChrom = firstChrom + '_split'
-		data = self[firstChrom][0]
-		self[lastChrom] = [data.copy()]
-		# Save the order as index for later comparaison
-		self.order = [firstChrom] + chroms[:] + [lastChrom]
+		chroms = self.order
 		# Create random starting point
+		randomStart = random.randint( 0, self[chroms[-1]][0]['endCoord'] )
+		random.shuffle(chroms)
+		for i in range(len(chroms)):
+			data = self[chroms[i]][0]
+			if data['startCoord'] <= randomStart <= data['endCoord']:
+				chroms = chroms[i:] + chroms[:i]
+				break
+
+		firstChrom = chroms.pop(0)
+		data = self[firstChrom][0]
 		data['strand'] = random.choice(['-', '+'])
-		randomStart = random.randint( data['chromStart'], data['chromEnd']-1 )
+		randomStart = data['chromStart'] + ( randomStart - data['startCoord'] )
+		# Save the order as index for later comparaison
+		self.order = [firstChrom] + chroms[:]
+		#
+		if randomStart != data['chromStart']:
+			lastChrom = firstChrom + '_split'
+			self[lastChrom] = [data.copy()]
+			self[lastChrom][0]['chromEnd'] = randomStart - 1
+			self.order += [lastChrom]
+			chroms += [lastChrom]
+
 		data['chromStart'] = randomStart
-		self[lastChrom][0]['chromEnd'] = randomStart - 1
-		lastCoord = remapGenome( data, lastCoord )		
+		lastCoord = remapGenome( data, lastCoord )
+	
 		# Calculate new coordinates
-		chroms += [lastChrom]
 		for chrom in chroms:
 			self[chrom][0]['strand'] = random.choice(['-', '+'])
 			lastCoord = remapGenome( self[chrom][0], lastCoord )
-
+		
 
 	#####################################################
 	### Randomize a file dataset with new coordinates ###
@@ -193,7 +205,7 @@ class Dataset(dict):
 		# Return a list of all the data
 		def getRegions(dataset):
 			regions = []
-			for chrom in dataset.order:
+			for chrom in dataset:
 				regions += dataset[chrom]
 			regions = sorted(regions, key=lambda k: k['startCoord']) 
 			return regions
@@ -247,63 +259,27 @@ class Dataset(dict):
 		overB = len(list(set(scoreRegionB))) + len(list(set(nameRegionB)))
 		return [overA, overB, over_bp]
 
-
 # -----------------------------------------------------------------------------------------
 
-	##################################
-	### Print the reference genome ###
-	##################################
-	def printReferenceGenome(self):
-		print "###REFERENCE GENOME###"
-		print "Name\tchromStart\tchromEnd\tstartCoord"
-		print "##################################################"
+	#####################################
+	### Print a entire Dataset object ###
+	#####################################
+	def printDataset(self, filename):
+		path = 'test_Files/%s' % filename
+		FH = open(path, 'w')
+		BEDname = re.split('/', self.name)
+		FH.write('track\ttype=Bed\tname="%s"\n' % BEDname[-1])
 		for chrom in self.order:
-			for genome in self[chrom]:
-				print chrom, "\t", genome['chromStart'], "\t", genome['chromEnd'], "\t",  genome['startCoord']
-		print "##################################################"
-
-
-	##################################
-	### Print the randomize genome ###
-	##################################
-	def printRandomizeGenome(self):
-		print "###RANDOMIZE GENOME###"
-		print "Name\tchromStart\tchromEnd\tstrand\tstartCoord\tendCoord"
-		print "########################################################################"
-		for chrom in self.order:
-			for genome in self[chrom]:
-				print chrom, "\t", genome['chromStart'], "\t", genome['chromEnd'], "\t", genome['strand'], "\t", genome['startCoord'], "\t", genome['endCoord']
-		print "########################################################################"
-
-
-	##################################
-	### Print the remapData output ###
-	##################################
-	def printDataset(self, refGenome, name):
-		print "###ORIGINAL DATA =", name, "###"
-		print "Name\tchromStart\tchromEnd\tstartCoord\tendCoord\tstrand"
-		print "#####################################################################################"
-		for chrom in self.order:
-			for refData in refGenome[chrom]:
-				print ">",chrom, "\t\t", refData['chromStart'], "\t", refData['chromEnd'], "\t", refData['startCoord']
 			for data in self[chrom]:
-				print data['name'], "\t", data['chromStart'], "\t", data['chromEnd'], "\t", data['startCoord'], "\t", data['endCoord'], "\t", data['strand']
-			print "#####################################################################################"
+				name, strand, score = '', '', ''
+				if 'name' in data:
+					name = "\t%s" % data['name']
+				if 'strand' in data:
+					strand = "\t%s" % data['strand']
+				if 'score' in data:
+					score = "\t%.2f" % data['score']
+				FH.write("%s\t%d\t%d%s%s%s\n" % (chrom, data['startCoord'], data['endCoord'], name, score, strand) )
+		FH.close()
 
 
-	##################################
-	### Print the remapData output ###
-	##################################
-	def printRemapData(self, randGenome):
-		print "###REMAP DATA###"
-		print "Name\tchromStart\tchromEnd\tstrand\tstartCoord\tendCoord\tsplit"
-		print "#####################################################################################"
-		for chrom in self.order:
-			for randData in randGenome[chrom]:
-				print ">",chrom, "\t\t", randData['chromStart'], "\t", randData['chromEnd'], "\t", randData['strand'], "\t", randData['startCoord'], "\t", randData['endCoord']
-			for data in self[chrom]:
-				split = ''
-				if 'split' in data :
-					split = data['split']
-				print data['name'], "\t", data['chromStart'], "\t", data['chromEnd'], "\t", data['strand'], "\t", data['startCoord'], "\t", data['endCoord'], "\t", split
-		print "#####################################################################################"
+

@@ -83,58 +83,66 @@ def output_stats(statsBP, statsAB, fileB_name, args):
 ###	 START HERE	###
 ###########################
 if __name__ == '__main__':
+
 	# Get the command line arguments in a dictionary
 	args = Arguments()
 
 	# Create a Dataset object based on the <genome_file>
 	refGenome = Dataset( args['<genome_file>'] )
 	refGenome.calcGenomeCoords()
-	if args['-v'] in ['all', 'refG']: refGenome.printReferenceGenome()
+	if args['-v'] in ['all', 'refG']: refGenome.printDataset('refGenome')
 
 	# Create a Dataset object based on the <A_file>
 	fileA = Dataset( args['<A_file>'] )
 	fileA.calcDataCoords(refGenome)
-	if args['-v'] in ['all', 'fileA']: fileA.printDataset(refGenome, args['<A_file>'])
+	if args['-v'] in ['all', 'fileA']: fileA.printDataset('fileA')
 
 	# Print output header for the <A_file>
 	#output_header(args, fileA)
 
 	# Foreach <B_files>
-	output_lines, output_keys = [], []
+	output_lines, output_keys, mnRandom = [], [], 0
 	for fileB_name in args['<B_files>']:
 
 		# Create a Dataset object based on the <B_file>
 		fileB = Dataset( fileB_name )
 		fileB.calcDataCoords(refGenome)
-		if args['-v'] in ['all', 'fileB']: fileB.printDataset(refGenome, fileB_name)
+		if args['-v'] in ['all', 'fileB']: fileB.printDataset('fileB')
 
 		# Compare <A_file> and <B_file>
 		overlapA, overlapB, overlapBP =  fileA.compareData(fileB, args)
 		overlapAB = overlapA * overlapB
 
 		# Foreach M number of randomizations
+		FH = open('test_Files/summary', 'w')
 		A_exp, B_exp, randOverlapBP, randOverlapAB = 0, 0, [], []
 		for mRandom in range( int(args['-m']) ):
 
 			# Create a randomization of the <A_file>
-			randFileA = fileA.randomize(refGenome, args)
+			randFileA = fileA.randomize(refGenome, args, 'randGenomeA_%d' %mRandom)
+			if args['-v'] in ['all', 'remap']: randFileA.printDataset('randFileA_%d' %mRandom)
 
 			# Foreach N number of randomizations
 			for nRandom in range( int(args['-n']) ):
 
 				# Create a randomization of the <B_file>
-				randFileB = fileB.randomize(refGenome, args)
+				randFileB = fileB.randomize(refGenome, args, 'randGenomeB_%d' %mnRandom)
+				if args['-v'] in ['all', 'remap']: randFileB.printDataset('randFileB_%d' %mnRandom)
 
 				# Compare randomized <A_file> and randomized <B_file>
 				res = randFileA.compareData(randFileB, args)
+				FH.write( 'randFileA_%d randFileB_%d\t\tbp_overlap: %d\t\tA_region_overlaps: %d\t\tB_region_overlaps: %d\n' %(mRandom, mnRandom, res[0], res[1], res[2]) )
+				if res[2] > 1000:
+					print res
+					exit()
 				randOverlapAB.append( res[0] * res[1] )
 				randOverlapBP.append( res[2] )
 				A_exp += res[0]
 				B_exp += res[1]
-		
+				mnRandom += 1
+		FH.close()		
+
 		# Calculate stats
-		print overlapBP
-		pprint.pprint(randOverlapBP)
 		totalRegions_B, totalBP_B = 0, 0
 		for region in fileB:		
 			for data in fileB[region]:
@@ -142,6 +150,7 @@ if __name__ == '__main__':
 				totalBP_B += data['chromEnd'] - data['chromStart'] + 1
 		A_exp /= float(args['-m']) * float(args['-n'])
 		B_exp /= float(args['-m']) * float(args['-n'])
+		print overlapBP, randOverlapBP
 		statsBP = getStats(overlapBP, randOverlapBP) + [overlapBP, totalBP_B, totalRegions_B]
 		statsAB = getStats(overlapAB, randOverlapAB) + [A_exp, B_exp, overlapA, overlapB]
 

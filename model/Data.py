@@ -5,6 +5,9 @@ class Data(dict):
 	def __init__(self, values, attributes):
 		length = min( len(values), len(attributes) )
 		for i in range(length):
+			# Special case when option -l rdg is set (TO CHANGE for better maintenance)
+			#if values[i] in ['+','-']:
+			#	 self['strand'] = values[i]
 			if attributes[i] == 'score':
 				self[ attributes[i] ] = float(values[i])
 			elif str(values[i]).isdigit():
