@@ -131,7 +131,7 @@ if __name__ == '__main__':
 
 				# Compare randomized <A_file> and randomized <B_file>
 				res = randFileA.compareData(randFileB, args)
-				FH.write( 'randFileA_%d randFileB_%d\t\tbp_overlap: %d\t\tA_region_overlaps: %d\t\tB_region_overlaps: %d\n' %(mRandom, mnRandom, res[0], res[1], res[2]) )
+				FH.write( 'randFileA_%d randFileB_%d\t\tbp_overlap: %d\t\tA_region_overlaps: %d\t\tB_region_overlaps: %d\n' %(mRandom, mnRandom, res[2], res[0], res[1]) )
 				if res[2] > 1000:
 					print res
 					exit()
@@ -150,7 +150,6 @@ if __name__ == '__main__':
 				totalBP_B += data['chromEnd'] - data['chromStart'] + 1
 		A_exp /= float(args['-m']) * float(args['-n'])
 		B_exp /= float(args['-m']) * float(args['-n'])
-		print overlapBP, randOverlapBP
 		statsBP = getStats(overlapBP, randOverlapBP) + [overlapBP, totalBP_B, totalRegions_B]
 		statsAB = getStats(overlapAB, randOverlapAB) + [A_exp, B_exp, overlapA, overlapB]
 

@@ -119,13 +119,15 @@ class Dataset(dict):
 		randomStart = data['chromStart'] + ( randomStart - data['startCoord'] )
 		# Save the order as index for later comparaison
 		self.order = [firstChrom] + chroms[:]
-		#
+		# Add the second part of the split chrom
 		if randomStart != data['chromStart']:
 			lastChrom = firstChrom + '_split'
 			self[lastChrom] = [data.copy()]
 			self[lastChrom][0]['chromEnd'] = randomStart - 1
-			self.order += [lastChrom]
-			chroms += [lastChrom]
+			# Replace the lastChrom in a randomly order
+			randPos = random.randint( 1, len(chroms)-1 )
+			self.order = self.order[:randPos] + [lastChrom] + self.order[randPos:]
+			chroms = chroms[:randPos] + [lastChrom] + chroms[randPos:]
 
 		data['chromStart'] = randomStart
 		lastCoord = remapGenome( data, lastCoord )
@@ -186,12 +188,12 @@ class Dataset(dict):
 			# Delete the useless regions in the firstChrom
 			self[firstChrom] = [data for data in self[firstChrom] if data not in toDelete]
 		# Inverse coordinates if '-' strand
-		for chrom in self.order:
-			randDataGenome = randGenome[chrom][0]
-			if randDataGenome['strand'] == '-':
-				for data in self[chrom]:
-					data['endCoord'] = randDataGenome['endCoord'] - (data['startCoord'] - randDataGenome['startCoord'])
-					data['startCoord'] = data['endCoord'] - (data['chromEnd'] - data['chromStart'])
+		#for chrom in self.order:
+		#	randDataGenome = randGenome[chrom][0]
+		#	if randDataGenome['strand'] == '-':
+		#		for data in self[chrom]:
+		#			data['endCoord'] = randDataGenome['endCoord'] - (data['startCoord'] - randDataGenome['startCoord'])
+		#			data['startCoord'] = data['endCoord'] - (data['chromEnd'] - data['chromStart'])
 
 # -----------------------------------------------------------------------------------------
 	
