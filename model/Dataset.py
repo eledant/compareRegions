@@ -124,14 +124,10 @@ class Dataset(dict):
 			lastChrom = firstChrom + '_split'
 			self[lastChrom] = [data.copy()]
 			self[lastChrom][0]['chromEnd'] = randomStart - 1
-			# Replace the lastChrom in a randomly order
-			randPos = random.randint( 1, len(chroms)-1 )
-			self.order = self.order[:randPos] + [lastChrom] + self.order[randPos:]
-			chroms = chroms[:randPos] + [lastChrom] + chroms[randPos:]
-
+			self.order.append(lastChrom)
+			chroms.append(lastChrom)
 		data['chromStart'] = randomStart
 		lastCoord = remapGenome( data, lastCoord )
-	
 		# Calculate new coordinates
 		for chrom in chroms:
 			self[chrom][0]['strand'] = random.choice(['-', '+'])
@@ -148,15 +144,14 @@ class Dataset(dict):
 			if chrom in self.order:
 				temp_chrom.append(chrom)
 		self.order = temp_chrom[:]
+		# Add the split chromosome to the dataset
 		if 'split' in randGenome.order[-1]:
-			self.order += [ randGenome.order[-1] ]
+			lastChrom = randGenome.order[-1]
+			self[lastChrom]= []
 		# Initialize variables
 		firstChrom = self.order[0]
-		lastChrom = self.order[-1]
 		toDelete = []
-		# Add the split chromosome to the dataset
-		self[lastChrom]= []
-		for chrom in self.order[:-1]:
+		for chrom in self.order:
 			for data in self[chrom]:
 				randDataGenome = randGenome[chrom][0]
 				# If the chromosome is split in two
@@ -185,8 +180,11 @@ class Dataset(dict):
 					# Calculate new coordinates
 					data['startCoord'] = randDataGenome['startCoord'] + (data['chromStart'] - randDataGenome['chromStart'])
 					data['endCoord'] = data['startCoord'] + (data['chromEnd'] - data['chromStart'] )
-			# Delete the useless regions in the firstChrom
-			self[firstChrom] = [data for data in self[firstChrom] if data not in toDelete]
+		# Add the split chromosome to the order list
+		if 'split' in randGenome.order[-1]:
+			self.order.append( lastChrom )
+		# Delete the useless regions in the firstChrom
+		self[firstChrom] = [data for data in self[firstChrom] if data not in toDelete]
 		# Inverse coordinates if '-' strand
 		#for chrom in self.order:
 		#	randDataGenome = randGenome[chrom][0]
