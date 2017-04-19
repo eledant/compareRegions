@@ -1,4 +1,5 @@
 from Data import Data
+from OverlapMatrix import OverlapMatrix
 import re, random, pprint, copy, datetime, os.path
 
 # A dictonary with the chromosom number as key and a list of Data as value
@@ -46,8 +47,20 @@ class Dataset(dict):
 				if region_name not in self.order:
 					self.order.append( region_name )
 		for chrom in self.order:
-			self[chrom] = sorted(self[chrom], key=lambda k: k['chromStart']) 
+			self[chrom] = sorted(self[chrom], key=lambda k: k['chromStart'])
 
+
+	#################################################
+	### Return the size ans the number of regions ###
+	#################################################
+	def getSize(self):
+		nbRegions, size = 0, 0
+		for chrom in self:
+			for data in self[chrom]:
+				nbRegions += 1
+				size += data['chromEnd'] - data['chromStart'] + 1
+		return [nbRegions, size]
+		
 # -----------------------------------------------------------------------------------------
 
 	####################################################
@@ -82,8 +95,7 @@ class Dataset(dict):
 		if args['-r']:
 			random.seed()
 		# By default : Shuffle dataset regions et calculate new coordinates according to a new starting point
-		if args['-l'] == 'def':
-			randGenome.randomizeGenome()				
+		randGenome.randomizeGenome()				
 		# Calculate new coordinates of the data according to the randomize genome
 		randFile = copy.deepcopy(self)
 		randFile.remapData(randGenome)
@@ -209,55 +221,50 @@ class Dataset(dict):
 				regions += dataset[chrom]
 			regions = sorted(regions, key=lambda k: k['startCoord']) 
 			return regions
-		
-		# Initialize variables	
-		overA, overB, over_bp, i, startIndex, scoreRegionB, nameRegionA, nameRegionB  = 0, 0, 0, 0, 0, [], [], []
-		regionsA = getRegions(self)
-		regionsB = getRegions(datasetB)
+			
+		# Initialize variables
+		pointerB, splitRegionA, splitRegionB  = 0, [], []
+		regionsA, regionsB = getRegions(self), getRegions(datasetB)
+		nA, sizeA = self.getSize()
+		nB, sizeB = datasetB.getSize()
+		matrix = OverlapMatrix(nA, nB, sizeA, sizeB)
 		# Loop on all the data in datasetA
-		for dataA in regionsA:
-			startA = dataA['startCoord']				
-			endA = dataA['endCoord']
-			scoreA = 1
+		for indexA in range(len(regionsA)):
+			dataA = regionsA[indexA]
+			startA, endA, scoreA = dataA['startCoord'], dataA['endCoord'], 1
 			if args['-i'] not in ['A', 'AB'] and 'score' in dataA:
 				scoreA = dataA['score']
-			i = startIndex
+			indexB = pointerB
 			indexPossible = True
 			# Loop on data in datasetB according to the index
-			while i < len(regionsB):
-				dataB = regionsB[i]
-				startB = dataB['startCoord']
-				endB = dataB['endCoord']
+			while indexB < len(regionsB):
+				dataB = regionsB[indexB]
+				startB, endB = dataB['startCoord'], dataB['endCoord']
 				# If there are an overlap bewteen A and B
 				if endA >= startB and endB >= startA:
 					scoreB = 1
 					if args['-i'] not in ['B', 'AB'] and 'score' in dataB:
 						scoreB = dataB['score']
-					# Calculate the number of overlap
-					if scoreA * scoreB >= 1:
-						if indexPossible:
-							if 'split' in dataA:
-								nameRegionA.append(dataA['name'])
-							else:
-								overA += 1
-						if 'split' in dataB:
-							nameRegionB.append(dataB['name'])
-						else:
-							scoreRegionB.append(i)
+					# Save split regions names
+					if 'split' in dataA:
+						splitRegionA.append(dataA['name'])
+					if 'split' in dataB:
+						splitRegionB.append(dataB['name'])
 					# Calculate the size of the overlap
-					over_bp += getOverlap(startA, endA, startB, endB) * scoreA * scoreB
+					overlap = getOverlap(startA, endA, startB, endB) * scoreA * scoreB
+					matrix.addOverlap( overlap, indexA, indexB )
 					indexPossible = False
 				# Set index if possible (condition + never get an overlap for this dataA)
 				elif startA > endB and indexPossible:
-					startIndex = i + 1
+					pointerB = indexB + 1
 				# Break if it's impossible to find overlap
 				elif endA < startB:
 					break
-				i += 1
-		
-		overA += len(list(set(nameRegionA)))
-		overB = len(list(set(scoreRegionB))) + len(list(set(nameRegionB)))
-		return [overA, overB, over_bp]
+				indexB += 1
+
+		# Add split regions to the matrix object
+		matrix.addSplitRegions( splitRegionA, splitRegionB )
+		return matrix
 
 # -----------------------------------------------------------------------------------------
 
@@ -265,7 +272,7 @@ class Dataset(dict):
 	### Print a entire Dataset object ###
 	#####################################
 	def printDataset(self, filename):
-		path = 'test_Files/%s' % filename
+		path = 'testFiles/%s' % filename
 		FH = open(path, 'w')
 		BEDname = re.split('/', self.name)
 		FH.write('track\ttype=Bed\tname="%s"\n' % BEDname[-1])
