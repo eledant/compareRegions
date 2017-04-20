@@ -9,7 +9,7 @@ Options:
 	-r 		  Random seed 						[default: False]
 	-i <arg>	  Ignore region scores (A|B|AB) 			[default: None]
 	-v <arg>	  Verbose output (all|refG|randG|remap|fileA|fileB)	[default: None]
-	-l <arg>	  Model (def|jac|enc|pwe)				[default: def]
+	-l <arg>	  Model (def|jac|enc|pwe|psn)				[default: def]
 """
 from docopt import docopt
 import re
@@ -37,8 +37,8 @@ class Arguments(dict):
 			errorList.append( "'-n' option only takes an positive integer as argument." )
 		if self['-i'] not in ['A','B','AB','None']:
 			errorList.append( "'-i' option only takes 'A', 'B' or 'AB' as argument." )
-		if self['-l'] not in ['def','jac','enc','pwe']:
-			errorList.append( "'-l' option only takes 'def', jac', 'enc' or 'pwe' as argument." )
+		if self['-l'] not in ['def','jac','enc','pwe','psn']:
+			errorList.append( "'-l' option only takes 'def', jac', 'enc', 'pwe' or 'psn' as argument." )
 		if self['-v'] not in ['None', 'all','refG','randG','remap', 'fileA','fileB']:
 			errorList.append( "'-v' option only takes 'all', 'refG', 'randG', 'remap', 'fileA' or 'fileB' as argument." )		
 

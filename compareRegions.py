@@ -18,6 +18,8 @@ def output_header(args, fileA):
 		print "#2_fields\tBase Overlap\tRegion Overlap\tB_filename\tBase Overlap without rand\tRegion Overlap without rand"
 	elif args['-l'] == 'pwe':
 		print "#2_fields\tPairwise Enrichment\tPairwise Enrichment without rand\tB_filename"
+	elif args['-l'] == 'psn':
+		print "#2_fields\tPearson Corr Coeff\tB_filename"
 
 # -----------------------------------------------------------------------------------------
 
