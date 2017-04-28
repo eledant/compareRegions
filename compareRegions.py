@@ -1,6 +1,5 @@
 #!/usr/bin/python
-from model import Dataset
-from input import Arguments
+from model import Dataset, Arguments
 import pprint, datetime
 #print datetime.datetime.now().time()
 
@@ -10,7 +9,7 @@ import pprint, datetime
 def output_header(args, fileA):
 	totalRegions, totalBP = fileA.getSize()
 	print "#1_query\tA_filename=\"",args['<A_file>'],"\"\tA_bp=",totalBP,"\tA_regions=",totalRegions
-	if args['-l'] == 'del':
+	if args['-l'] == 'def':
 		print "#2_fields\tabs(z-score)\tz-score\tp-val\tB_filename\tbp_overlap(obs/exp)\tB_bp\tB_regions\tA_region_overlaps(obs/exp)\tB_region_overlaps(obs/exp)\tregion_overlap_z-score\tregion_overlap_p-val"
 	elif args['-l'] == 'jac':
 		print "#2_fields\tJaccard similarity\tSimilarity without rand\tB_filename"
@@ -19,7 +18,23 @@ def output_header(args, fileA):
 	elif args['-l'] == 'pwe':
 		print "#2_fields\tPairwise Enrichment\tPairwise Enrichment without rand\tB_filename"
 	elif args['-l'] == 'psn':
-		print "#2_fields\tPearson Corr Coeff\tB_filename"
+		print "#2_fields\tPearson Corr Coeff\tPearson Corr Coeff without rand\tB_filename"
+	elif args['-l'] == 'npm':
+		print "#2_fields\tNPMI\tNPMI without ran\tB_filename"
+
+
+#############################################
+### Print output_lines sorted output_keys ###
+#############################################
+def output_results(lines, keys):
+	for i in range(len(keys)):
+		if keys[i] != 'NaN':
+			keys[i] = abs(keys[i])
+		else:
+			keys[i] = 0
+	lines = [x for (y,x) in sorted(zip(keys,lines), reverse=True)]
+	for line in lines:
+		print line
 
 # -----------------------------------------------------------------------------------------
 
@@ -78,7 +93,7 @@ if __name__ == '__main__':
 				randMatrices[-1].addGenomeSize( refGenome.getSize()[1] )
 
 				# Print a new line in the summary file
-				res = randMatrices[-1].countOverlaps()
+				res = [randMatrices[-1].getOverA(),randMatrices[-1].getOverB(), randMatrices[-1].getOverlapsSize()]
 				FH.write( '%s\t\trandFileA_%d randFileB_%d\t\tbp_overlap: %d\t\tA_region_overlaps: %d\t\tB_region_overlaps: %d\n' %(fileB_name, mRandom, mnRandom, res[2], res[0], res[1]) )
 				mnRandom += 1
 		 
@@ -89,14 +104,8 @@ if __name__ == '__main__':
 		output_keys.append( score )
 
 	FH.close()
-	# Print output_lines sorted output_keys (z_score)
-	for i in range(len(output_keys)):
-		if output_keys[i] != 'NaN':
-			output_keys[i] = abs(output_keys[i])
-		else:
-			output_keys[i] = 0
-	output_lines = [x for (y,x) in sorted(zip(output_keys,output_lines), reverse=True)]
-	for line in output_lines:
-		print line
+	
+	# Print output_lines sorted output_keys (z_score or something else)
+	#output_results(output_lines, output_keys)
 
 

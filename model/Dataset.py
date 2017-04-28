@@ -1,4 +1,3 @@
-from Data import Data
 from OverlapMatrix import OverlapMatrix
 import re, random, pprint, copy, datetime, os.path
 
@@ -26,6 +25,20 @@ class Dataset(dict):
 	### Extract Data from 'FILE', sort them by the 'region_name' ###
 	################################################################
 	def getData(self, FILE):
+		# Set the dictionary
+		def setDict(values, attributes):
+			dic = {}
+			length = min( len(values), len(attributes) )
+			for i in range(length):
+				# Special case when option -l rdg is set (TO CHANGE for better maintenance)
+				if attributes[i] == 'score':
+					dic[ attributes[i] ] = float(values[i])
+				elif str(values[i]).isdigit():
+					dic[ attributes[i] ] = int(values[i])
+				else:
+					dic[ attributes[i] ] = values[i]
+			return dic
+
 		attributes = ['chromStart', 'chromEnd']
 		# Check if it's a BED or BEDGRAPH file
 		for line in FILE:
@@ -43,7 +56,7 @@ class Dataset(dict):
 				region_name = values.pop(0)
 				if region_name not in self:
 					self[region_name] = []
-				self[region_name].append( Data(values, attributes) )
+				self[region_name].append( setDict(values, attributes) )
 				if region_name not in self.order:
 					self.order.append( region_name )
 		for chrom in self.order:
@@ -240,9 +253,11 @@ class Dataset(dict):
 			while indexB < len(regionsB):
 				dataB = regionsB[indexB]
 				startB, endB = dataB['startCoord'], dataB['endCoord']
+				overlap = 0
+				scoreB = 1
 				# If there are an overlap bewteen A and B
 				if endA >= startB and endB >= startA:
-					scoreB = 1
+
 					if args['-i'] not in ['B', 'AB'] and 'score' in dataB:
 						scoreB = dataB['score']
 					# Save split regions names
@@ -252,10 +267,12 @@ class Dataset(dict):
 						splitRegionB.append(dataB['name'])
 					# Calculate the size of the overlap
 					overlap = getOverlap(startA, endA, startB, endB) * scoreA * scoreB
+					# Save the results in the matrix
 					matrix.addOverlap( overlap, indexA, indexB )
 					indexPossible = False
+				matrix.addScores( overlap, (endA-startA+1)*scoreA+(endB-startB+1)*scoreB-overlap  )
 				# Set index if possible (condition + never get an overlap for this dataA)
-				elif startA > endB and indexPossible:
+				if startA > endB and indexPossible:
 					pointerB = indexB + 1
 				# Break if it's impossible to find overlap
 				elif endA < startB:
