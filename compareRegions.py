@@ -1,5 +1,7 @@
 #!/usr/bin/python
 from model import Dataset, Arguments
+import matplotlib.pyplot as plt
+import seaborn as sns
 import pprint, datetime
 #print datetime.datetime.now().time()
 
@@ -12,29 +14,58 @@ def output_header(args, fileA):
 	if args['-l'] == 'def':
 		print "#2_fields\tabs(z-score)\tz-score\tp-val\tB_filename\tbp_overlap(obs/exp)\tB_bp\tB_regions\tA_region_overlaps(obs/exp)\tB_region_overlaps(obs/exp)\tregion_overlap_z-score\tregion_overlap_p-val"
 	elif args['-l'] == 'jac':
-		print "#2_fields\tJaccard similarity\tSimilarity without rand\tB_filename"
-	elif args['-l'] == 'enc':
-		print "#2_fields\tBase Overlap\tRegion Overlap\tB_filename\tBase Overlap without rand\tRegion Overlap without rand"
+		print "#2_fields\tJaccard similarity\tExpected Similarity\tB_filename"
+	elif args['-l'] == 'ebo':
+		print "#2_fields\tBase Overlap\tExpected Overlap\tB_filename"
+	elif args['-l'] == 'ero':
+		print "#2_fields\tRegion Overlap\tExpected Overlap\tB_filename"
 	elif args['-l'] == 'pwe':
-		print "#2_fields\tPairwise Enrichment\tPairwise Enrichment without rand\tB_filename"
+		print "#2_fields\tPairwise Enrichment\tExpected Pairwise\tB_filename"
 	elif args['-l'] == 'psn':
-		print "#2_fields\tPearson Corr Coeff\tPearson Corr Coeff without rand\tB_filename"
+		print "#2_fields\tPearson Corr Coeff\tExpected Coefficient\tB_filename"
 	elif args['-l'] == 'npm':
-		print "#2_fields\tNPMI\tNPMI without ran\tB_filename"
+		print "#2_fields\tNPMI\tExpected NPMI\tB_filename"
 
 
 #############################################
 ### Print output_lines sorted output_keys ###
 #############################################
-def output_results(lines, keys):
+def output_results(total_stats):
+	keys, lines = [], []
+	# Get the keys (scores) and their output lines
+	for stats in total_stats:
+		lines.append( stats[0] )
+		keys.append( stats[1] )
+	# Sort the output lines by highest scores
 	for i in range(len(keys)):
 		if keys[i] != 'NaN':
 			keys[i] = abs(keys[i])
 		else:
 			keys[i] = 0
 	lines = [x for (y,x) in sorted(zip(keys,lines), reverse=True)]
+	# Print sorted lines
 	for line in lines:
 		print line
+
+
+######################################
+### Plot a graph of a distribution ###
+######################################
+def plotDistributions(total_stats):
+	sns.set(color_codes=True)
+	distris, expecteds, titles = [], [], []
+	# Get the distributions (list of points), expected value and title
+	for stats in total_stats:
+		distris.append( stats[2] )
+		expecteds.append( stats[3] )
+		titles.append( stats[4] )
+
+	for i in range(len(total_stats)):
+		sns.distplot(distris[i], kde=True, rug=True)
+		plt.suptitle(titles[i], fontsize=14, fontweight='bold')
+		comment = 'expected value = %g' % expecteds[i]
+		plt.title(comment)
+		plt.show()
 
 # -----------------------------------------------------------------------------------------
 
@@ -61,7 +92,7 @@ if __name__ == '__main__':
 
 	# Foreach <B_files>
 	FH = open('testFiles/summary', 'w')
-	output_lines, output_keys, mnRandom = [], [], 0
+	total_stats, mnRandom = [], 0
 	for fileB_name in args['<B_files>']:
 
 		# Create a Dataset object based on the <B_file>
@@ -97,15 +128,13 @@ if __name__ == '__main__':
 				FH.write( '%s\t\trandFileA_%d randFileB_%d\t\tbp_overlap: %d\t\tA_region_overlaps: %d\t\tB_region_overlaps: %d\n' %(fileB_name, mRandom, mnRandom, res[2], res[0], res[1]) )
 				mnRandom += 1
 		 
-		# Calculate stats
-		line, score = matrix.calcStats(randMatrices, fileB_name, args)
-		# Create output for the <B_file>
-		output_lines.append( line )
-		output_keys.append( score )
+		# Calculate stats and save results (0=line, 1=score_mean, 2=distribution, 3=expected_score, 4=title)
+		total_stats += matrix.calcStats(randMatrices, fileB_name, args)
 
 	FH.close()
 	
 	# Print output_lines sorted output_keys (z_score or something else)
-	#output_results(output_lines, output_keys)
-
+	output_results(total_stats)
+	# Create distribution graph of stats for each file 
+	plotDistributions(total_stats)
 

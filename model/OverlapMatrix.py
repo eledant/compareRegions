@@ -26,14 +26,6 @@ class OverlapMatrix(list):
 		self.indexB_list.append(indexB)
 
 
-	##############################################
-	### Add A and B scores for the new overlap ###
-	##############################################
-	def addScores(self, a, b):
-		self.scoreA.append(a)
-		self.scoreB.append(b)
-
-
 	###################################
 	### Add a list of split regions ###
 	###################################
@@ -72,6 +64,25 @@ class OverlapMatrix(list):
 	def addGenomeSize(self, _genomeSize):
 		self.genomeSize = float(_genomeSize)
 
+	
+	########################################################
+	### Get variables for the Pearson coefficient method ###
+	########################################################
+	def getPearsonVariables(self, regionsA, regionsB):
+		self.pA, self.pB, self.pA_sq, self.pB_sq = 0, 0, 0, 0	
+		for dataA in regionsA:
+			scoreA = 1
+			if 'score' in dataA:
+				scoreA = dataA['score']
+			self.pA += (dataA['endCoord']-dataA['startCoord']+1) * scoreA
+			self.pA_sq += (dataA['endCoord']-dataA['startCoord']+1) * pow(scoreA,2)
+		for dataB in regionsB:
+			scoreB = 1
+			if 'score' in dataB:
+				scoreB = dataB['score']
+			self.pB += (dataB['endCoord']-dataB['startCoord']+1) * scoreB
+			self.pB_sq += (dataB['endCoord']-dataB['startCoord']+1) * pow(scoreB,2)
+
 # -----------------------------------------------------------------------------------------
 
 	########################################################################################
@@ -79,21 +90,23 @@ class OverlapMatrix(list):
 	########################################################################################
 	def calcStats(self, randMatrices, fileB_name, args):
 		fileB_name = fileB_name.split('/')[-1]
-		if args['-l'] == 'def':
-			line, key = self.zScore(randMatrices, fileB_name, args)
-		elif args['-l'] == 'jac':
-			line, key = self.jaccard(randMatrices, fileB_name)
-		elif args['-l'] == 'enc':
-			line, key = self.encode(randMatrices, fileB_name)
-		elif args['-l'] == 'pwe':
-			line, key = self.ernstKellis(randMatrices, fileB_name)
-		elif args['-l'] == 'psn':
-			line, key = self.pearson(randMatrices, fileB_name)
-			lineP, keyP = self.zScore(randMatrices, fileB_name, args)
-			print "%g %g %s" %(key, keyP, fileB_name)
-		elif args['-l'] == 'npm':
-			line, key = self.npmi(randMatrices, fileB_name)
-		return [line, key]
+		# 0=line, 1=score_mean, 2=distribution, 3=expected_score, 4=title
+		res_stats = []	
+		if args['-l'] in ['all', 'def']:
+			res_stats.append( self.zScore(randMatrices, fileB_name, args) )
+		if args['-l'] in ['all', 'jac']:
+			res_stats.append( self.jaccard(randMatrices, fileB_name) )
+		if args['-l'] in ['all', 'ebo']:
+			res_stats.append( self.encodeBaseOver(randMatrices, fileB_name) )
+		if args['-l'] in ['all', 'ero']:
+			res_stats.append( self.encodeRegionOver(randMatrices, fileB_name) )
+		if args['-l'] in ['all', 'pwe']:
+			res_stats.append( self.ernstKellis(randMatrices, fileB_name) )
+		if args['-l'] in ['all', 'psn']:
+			res_stats.append( self.pearson(randMatrices, fileB_name) )
+		if args['-l'] in ['all', 'npm']:
+			res_stats.append( self.npmi(randMatrices, fileB_name) )
+		return res_stats
 
 	
 	######################################################
@@ -169,7 +182,7 @@ class OverlapMatrix(list):
 		statsAB = getZScore(overlapAB, randOverlapAB) + [A_exp, B_exp, overlapA, overlapB]
 		# Create output for the <B_file>
 		output_line = output_stats(statsBP, statsAB, fileB_name, args)
-		return [output_line, statsBP[0]]
+		return [output_line, statsBP[0], randOverlapBP, overlapBP, 'Z-Score']
 
 
 	#################################################################
@@ -189,28 +202,40 @@ class OverlapMatrix(list):
 		jaccard_mean = sum(jaccard_l) / len(jaccard_l)
 
 		output = "#3_subject\t%g\t%g\t%s" %(jaccard_mean, jaccard, fileB_name)
-		return [output, jaccard_mean]
+		return [output, jaccard_mean, jaccard_l, jaccard, 'Jaccard Similarity']
 
 
-	#####################################################################################
-	### Calculate the region and basepair overlap statistics and return a output_line ###
-	#####################################################################################
-	def encode(self, randMatrices, fileB_name):
-		def calcEncode(pAB, pA):
+	##########################################################################
+	### Calculate the basepair overlap statistics and return a output_line ###
+	##########################################################################
+	def encodeBaseOver(self, randMatrices, fileB_name):
+		def calcBaseOver(pAB, pA):
 			return pAB / pA
 
-		baseOver = calcEncode(self.getOverlapsSize(), self.dataA_size)
-		regionOver = calcEncode(self.getOverA(), self.dataA_nb)
-
-		baseOver_l, regionOver_l = [], []
+		baseOver = calcBaseOver(self.getOverlapsSize(), self.dataA_size)
+		baseOver_l = []
 		for m in randMatrices:
-			baseOver_l.append( calcEncode( m.getOverlapsSize(), m.dataA_size) )
-			regionOver_l.append(  calcEncode( self.getOverA(), m.dataA_nb) )
+			baseOver_l.append( calcBaseOver( m.getOverlapsSize(), m.dataA_size) )
 		baseOver_mean = sum(baseOver_l) / len(baseOver_l)
+
+		output = "#3_subject\t%g\t%g\t%s" %(baseOver_mean, baseOver, fileB_name)
+		return [output, baseOver_mean, baseOver_l, baseOver, 'Bases Overlap']
+
+	########################################################################
+	### Calculate the region overlap statistics and return a output_line ###
+	########################################################################
+	def encodeRegionOver(self, randMatrices, fileB_name):
+		def calcRegionOver(pAB, pA):
+			return pAB / pA
+
+		regionOver = calcRegionOver(self.getOverA(), self.dataA_nb)
+		regionOver_l = []
+		for m in randMatrices:
+			regionOver_l.append( calcRegionOver( m.getOverA(), m.dataA_nb) )
 		regionOver_mean = sum(regionOver_l) / len(regionOver_l)
 
-		output = "#3_subject\t%g\t%g\t%s\t%g\t%g" %(baseOver_mean, regionOver_mean, fileB_name, baseOver, regionOver)
-		return [output, baseOver_mean]
+		output = "#3_subject\t%g\t%g\t%s" %(regionOver_mean, regionOver, fileB_name)
+		return [output, regionOver_mean, regionOver_l, regionOver, 'Regions Overlap']
 
 
 	##################################################################
@@ -218,7 +243,7 @@ class OverlapMatrix(list):
 	##################################################################
 	def ernstKellis(self, randMatrices, fileB_name):
 		def calcErnstKellis(pAB, pA, pB, genomeSize):
-			#const = 100 # pseudocount of 100 bases for smoothing
+			const = 0 # pseudocount of 100 bases for smoothing in the formula
 			return (pAB + const) / ((pA * pB)/genomeSize + const)
 
 		pwEnrich = calcErnstKellis(self.getOverlapsSize(), self.dataA_size, self.dataB_size, self.genomeSize)
@@ -228,31 +253,13 @@ class OverlapMatrix(list):
 		pwEnrich_mean = sum(pwEnrich_l) / len(pwEnrich_l)
 		
 		output = "#3_subject\t%g\t%g\t%s" %(pwEnrich_mean, pwEnrich, fileB_name)
-		return [output, pwEnrich_mean]
+		return [output, pwEnrich_mean, pwEnrich_l, pwEnrich, 'Pairwise Enrichment']
 
 
 	#############################################################################
 	### Calculate the Pearson correlation coefficent and return a output_line ###
 	#############################################################################
 	def pearson(self, randMatrices, fileB_name):
-		# Return the sum of a list of number
-		def getSum(var):
-			size = 0
-			for e in var:
-				size += e
-			return size
-		# Return the sum of each squared number
-		def getSqrtSum(var):
-			size = 0
-			for e in var:
-				size += pow(e,2)
-			return size
-		# Return the sum of the multiplication of two list 
-		def getMultSum(varA, varB):
-			size = 0
-			for i in range(len(varA)):
-				size += varA[i] * varB[i]
-			return size
 		# Formula of the coefficient
 		def calcPearson(pA, pB, pA_sq, pB_sq, pAB, n):
 			numerator = pAB - ((pA * pB) / n)
@@ -263,16 +270,16 @@ class OverlapMatrix(list):
 				return numerator / denominator		
 
 		# Calculte the coefficient
-		pearson = calcPearson( getSum(self.scoreA), getSum(self.scoreB), getSqrtSum(self.scoreA), getSqrtSum(self.scoreB), getMultSum(self.scoreA, self.scoreB), len(self.scoreA) )
+		pearson = calcPearson( self.pA, self.pB, self.pA_sq, self.pB_sq, self.getOverlapsSize(), self.genomeSize )
 		pearson_l = []
 		for m in randMatrices:
-				res = calcPearson( getSum(m.scoreA), getSum(m.scoreB), getSqrtSum(m.scoreA), getSqrtSum(m.scoreB), getMultSum(m.scoreA, m.scoreB), len(m.scoreA) )
+				res = calcPearson( m.pA, m.pB, m.pA_sq, m.pB_sq, m.getOverlapsSize(), m.genomeSize )
 				pearson_l.append( res )
 		pearson_mean = sum(pearson_l) / len(pearson_l)
 		
 		# Create an output result
 		output = "#3_subject\t%g\t%g\t%s" %(pearson_mean, pearson, fileB_name)
-		return [output, pearson]
+		return [output, pearson_mean, pearson_l, pearson, 'Pearson Correlation Coefficient']
 
 
 	######################################################################################
@@ -288,14 +295,13 @@ class OverlapMatrix(list):
 			else:
 				return math.log(pAB/(pA*pB)) / (-math.log(pAB))
 
-		npmi = calcNpmi(self.getOverlapsSize(), self.dataA_size, self.dataB_size, self.genomeSize)
+		npmi = calcNpmi(self.getOverlapsSize(), self.dataA_size, self.dataB_size, self.dataA_nb+self.dataB_nb)
 		npmi_l = []
 		for m in randMatrices:
-			npmi_l.append( calcNpmi(m.getOverlapsSize(), m.dataA_size, m.dataB_size, m.genomeSize) )
+			npmi_l.append( calcNpmi(m.getOverlapsSize(), m.dataA_size, m.dataB_size, m.dataA_nb+m.dataB_nb) )
 		npmi_mean = sum(npmi_l) / len(npmi_l)
 
 		output = "#3_subject\t%g\t%g\t%s" %(npmi_mean, npmi, fileB_name)
-		return [output, npmi_mean]
-	
+		return [output, npmi_mean, npmi_l, npmi, 'NPMI']
 
 

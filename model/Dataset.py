@@ -241,6 +241,7 @@ class Dataset(dict):
 		nA, sizeA = self.getSize()
 		nB, sizeB = datasetB.getSize()
 		matrix = OverlapMatrix(nA, nB, sizeA, sizeB)
+		matrix.getPearsonVariables(regionsA, regionsB)
 		# Loop on all the data in datasetA
 		for indexA in range(len(regionsA)):
 			dataA = regionsA[indexA]
@@ -253,11 +254,9 @@ class Dataset(dict):
 			while indexB < len(regionsB):
 				dataB = regionsB[indexB]
 				startB, endB = dataB['startCoord'], dataB['endCoord']
-				overlap = 0
-				scoreB = 1
 				# If there are an overlap bewteen A and B
 				if endA >= startB and endB >= startA:
-
+					scoreB = 1
 					if args['-i'] not in ['B', 'AB'] and 'score' in dataB:
 						scoreB = dataB['score']
 					# Save split regions names
@@ -270,7 +269,6 @@ class Dataset(dict):
 					# Save the results in the matrix
 					matrix.addOverlap( overlap, indexA, indexB )
 					indexPossible = False
-				matrix.addScores( overlap, (endA-startA+1)*scoreA+(endB-startB+1)*scoreB-overlap  )
 				# Set index if possible (condition + never get an overlap for this dataA)
 				if startA > endB and indexPossible:
 					pointerB = indexB + 1
