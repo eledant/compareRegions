@@ -10,6 +10,9 @@ Options:
 	-i <arg>	  Ignore region scores (A|B|AB) 			[default: None]
 	-v <arg>	  Verbose output (all|refG|randG|remap|fileA|fileB)	[default: None]
 	-l <arg>	  Model (def|all|jac|ebo|ero|pwe|psn|npm)		[default: def]
+	-s		  Sort the output by score				[default: False]
+	-p		  Plot the results in a graph				[default: False]
+	-c		  Create a summary file of the comparaison		[default: False]
 """
 from docopt import docopt
 import re

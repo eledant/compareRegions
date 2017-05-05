@@ -25,25 +25,30 @@ def output_header(args, fileA):
 		print "#2_fields\tPearson Corr Coeff\tExpected Coefficient\tB_filename"
 	elif args['-l'] == 'npm':
 		print "#2_fields\tNPMI\tExpected NPMI\tB_filename"
+	elif args['-l'] == 'all':
+		print "#2_fields\tStatistic Test\tScore\tExpected Score"
 
 
 #############################################
 ### Print output_lines sorted output_keys ###
 #############################################
-def output_results(total_stats):
+def output_results(total_stats, fileB_name):
 	keys, lines = [], []
 	# Get the keys (scores) and their output lines
 	for stats in total_stats:
 		lines.append( stats[0] )
 		keys.append( stats[1] )
 	# Sort the output lines by highest scores
-	for i in range(len(keys)):
-		if keys[i] != 'NaN':
-			keys[i] = abs(keys[i])
-		else:
-			keys[i] = 0
-	lines = [x for (y,x) in sorted(zip(keys,lines), reverse=True)]
-	# Print sorted lines
+	if args['-s']:
+		for i in range(len(keys)):
+			if keys[i] != 'NaN':
+				keys[i] = abs(keys[i])
+			else:
+				keys[i] = 0
+		lines = [x for (y,x) in sorted(zip(keys,lines), reverse=True)]
+	# Print lines
+	if args['-l'] == 'all':
+		print ">>>", fileB_name.split('/')[-1]
 	for line in lines:
 		print line
 
@@ -51,21 +56,21 @@ def output_results(total_stats):
 ######################################
 ### Plot a graph of a distribution ###
 ######################################
-def plotDistributions(total_stats):
+def plotDistributions(total_stats, args):
 	sns.set(color_codes=True)
-	distris, expecteds, titles = [], [], []
-	# Get the distributions (list of points), expected value and title
-	for stats in total_stats:
-		distris.append( stats[2] )
-		expecteds.append( stats[3] )
-		titles.append( stats[4] )
-
+	plt.figure(1)
 	for i in range(len(total_stats)):
-		sns.distplot(distris[i], kde=True, rug=True)
-		plt.suptitle(titles[i], fontsize=14, fontweight='bold')
-		comment = 'expected value = %g' % expecteds[i]
+		if args['-l'] == 'all':
+			plt.subplot(3,3,i+1)
+		plt.suptitle('1% overlap | 1 region', fontsize=14, fontweight='bold')
+		comment = '%s = %g | expected value = %g' % (total_stats[i][4], total_stats[i][1], total_stats[i][3])
+		sns.distplot(total_stats[i][2], kde=True, rug=True)
 		plt.title(comment)
-		plt.show()
+	manager = plt.get_current_fig_manager()
+	manager.resize(*manager.window.maxsize())
+	plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1)
+	plt.show()
+	
 
 # -----------------------------------------------------------------------------------------
 
@@ -91,8 +96,8 @@ if __name__ == '__main__':
 	output_header(args, fileA)
 
 	# Foreach <B_files>
-	FH = open('testFiles/summary', 'w')
-	total_stats, mnRandom = [], 0
+	if args['-c']: FH = open('testFiles/summary', 'w')
+	mnRandom = 0
 	for fileB_name in args['<B_files>']:
 
 		# Create a Dataset object based on the <B_file>
@@ -125,16 +130,16 @@ if __name__ == '__main__':
 
 				# Print a new line in the summary file
 				res = [randMatrices[-1].getOverA(),randMatrices[-1].getOverB(), randMatrices[-1].getOverlapsSize()]
-				FH.write( '%s\t\trandFileA_%d randFileB_%d\t\tbp_overlap: %d\t\tA_region_overlaps: %d\t\tB_region_overlaps: %d\n' %(fileB_name, mRandom, mnRandom, res[2], res[0], res[1]) )
+				if args['-c']: FH.write( '%s\t\trandFileA_%d randFileB_%d\t\tbp_overlap: %d\t\tA_region_overlaps: %d\t\tB_region_overlaps: %d\n' \
+						%(fileB_name, mRandom, mnRandom, res[2], res[0], res[1]) )
 				mnRandom += 1
 		 
 		# Calculate stats and save results (0=line, 1=score_mean, 2=distribution, 3=expected_score, 4=title)
-		total_stats += matrix.calcStats(randMatrices, fileB_name, args)
+		total_stats = matrix.calcStats(randMatrices, fileB_name, args)
+		# Print output_lines sorted output_keys (z_score or something else)
+		output_results(total_stats, fileB_name)
+		# Create distribution graph of stats for each file 
+		if args['-p']: plotDistributions(total_stats, args)
 
-	FH.close()
-	
-	# Print output_lines sorted output_keys (z_score or something else)
-	output_results(total_stats)
-	# Create distribution graph of stats for each file 
-	plotDistributions(total_stats)
+	if args['-c']:  FH.close()
 

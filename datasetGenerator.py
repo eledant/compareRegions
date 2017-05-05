@@ -18,55 +18,66 @@ def randomStartA(regions, genomeSize, bpRegion):
 				return startCoord
 
 # Create accurate startCoord for regionB, overlaping with regionA
-def randomStartB(regionA, genomeSize, bpRegion, bpOverlap):
-	startCoord = regionA - bpRegion + bpOverlap
+def accurateStartB(regionA, genomeSize, bpRegion, overlapSize):
+	startCoord = regionA - bpRegion + overlapSize
 	if startCoord < 0:
-		startCoord = regionA + bpRegion - bpOverlap
+		startCoord = regionA + bpRegion - overlapSize
 	return startCoord
 
 #################
 ### Variables ###
 #################
+genomeSize = 2600000000
+# 1. Percentage of BP overlap between A and B
+overlapPerc = 10.0
+# 2. BP total for all regions (bpTotal >= nbRegion)
+bpTotalA = 100000000
+bpTotalB = 100000000
+# 3. Number of regions 		Max = (bpTotalA/2)*overlapPerc < nbRegionA
+nbRegionA = 100000
+nbRegionB = 100000
+
 folderPath = './'
-nameA = 'datasetA.txt'
-nameB = 'datasetB.txt'
-
-genomeSize = 100
-# 1. BP overlap between A and B (condition = 0.1%, 1%, 10% ...)
-bpOverlap = 4
-# 2. BP for a region (<= bpOverlap, condition = same or different)
-bpRegionA = 9
-bpRegionB = 9
-# 3. Number of regions (condition = same or different)
-nbRegionA = 5
-nbRegionB = 5
-
+nameA = 'datasetA_%d.bed' %nbRegionA
+nameB = 'datasetB_%d.bed' %nbRegionB
 
 #################
 ### Main part ###
 #################
 
+# Calculate the number of BP by region
+bpRegionA = bpTotalA / nbRegionA
+bpRegionB = bpTotalB / nbRegionB
+# Calculate the BP of an overlap
+bpOverlap = ((bpTotalA+bpTotalB)/2)*(overlapPerc/100)
+overlapSize = bpOverlap / ((nbRegionA+nbRegionB)/2)
+
+# Quit if not enough bpTotalA or too much regions
+if (bpTotalA/2)*overlapPerc < nbRegionA or (bpTotalB/2)*overlapPerc < nbRegionB:
+	print "Error, not enough bpTotalA or too much regions!"
+	exit()
+
 # Create datasetA with regionsA
-FH = open(folderPath+nameA, 'w')
-FH.write('track	type=Bed\tname="%s"\n' % nameA)
+FA = open(folderPath+nameA, 'w')
+FA.write('track	type=Bed\tname="%s"\n' % nameA)
 startRegionA = []
 for regionA in range(nbRegionA):
 	regionName = 'Data%d' %regionA
 	startCoord = randomStartA(startRegionA, genomeSize, bpRegionA)
 	startRegionA.append(startCoord)
 	endCoord = startCoord + bpRegionA - 1
-	FH.write('chrm\t%d\t%d\t%s\n' %(startCoord, endCoord, regionName))
-FH.close()
+	FA.write('chrm\t%d\t%d\t%s\n' %(startCoord, endCoord, regionName))
+FA.close()
 
 # Create datasetB with regionsB
-FH = open(folderPath+nameB, 'w')
-FH.write('track	type=Bed\tname="%s"\n' % nameB)
+FB = open(folderPath+nameB, 'w')
+FB.write('track	type=Bed\tname="%s"\n' % nameB)
 for regionB in range(nbRegionB):
 	regionName = 'Data%d' %regionB
-	startCoord = randomStartB(startRegionA.pop(0), genomeSize, bpRegionB, bpOverlap)
+	startCoord = accurateStartB(startRegionA.pop(0), genomeSize, bpRegionB, overlapSize)
 	endCoord = startCoord + bpRegionB - 1
-	FH.write('chrm\t%d\t%d\t%s\n' %(startCoord, endCoord, regionName))
-FH.close()
+	FB.write('chrm\t%d\t%d\t%s\n' %(startCoord, endCoord, regionName))
+FB.close()
 
 
 

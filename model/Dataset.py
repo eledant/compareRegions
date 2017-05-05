@@ -59,6 +59,7 @@ class Dataset(dict):
 				self[region_name].append( setDict(values, attributes) )
 				if region_name not in self.order:
 					self.order.append( region_name )
+		# Sort regions by order of height
 		for chrom in self.order:
 			self[chrom] = sorted(self[chrom], key=lambda k: k['chromStart'])
 
