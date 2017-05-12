@@ -91,7 +91,10 @@ class OverlapMatrix(list):
 	def calcStats(self, randMatrices, fileB_name, args):
 		fileB_name = fileB_name.split('/')[-1]
 		# 0=line, 1=score_mean, 2=distribution, 3=expected_score, 4=title
-		res_stats = []	
+		res_stats = []
+	
+		print "Overlap Size =", self.getOverlapsSize()
+
 		if args['-l'] in ['all', 'def']:
 			res_stats.append( self.zScore(randMatrices, fileB_name, args) )
 		if args['-l'] in ['all', 'psn']:
@@ -301,7 +304,7 @@ class OverlapMatrix(list):
 			output = "\tPearson\t%g\t%g" %(pearson_mean, pearson)
 		else:
 			output = "#3_subject\t%g\t%g\t%s" %(pearson_mean, pearson, fileB_name)
-		return [output, pearson_mean, pearson_l, pearson, 'Pearson Corr. Coeff.']
+		return [output, pearson_mean, pearson_l, pearson, 'Pearson']
 
 
 	######################################################################################

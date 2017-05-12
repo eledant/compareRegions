@@ -65,7 +65,7 @@ class Dataset(dict):
 
 
 	#################################################
-	### Return the size ans the number of regions ###
+	### Return the size and the number of regions ###
 	#################################################
 	def getSize(self):
 		nbRegions, size = 0, 0
@@ -178,7 +178,8 @@ class Dataset(dict):
 		firstChrom = self.order[0]
 		toDelete = []
 		for chrom in self.order:
-			for data in self[chrom]:
+			for i in range(len(self[chrom])):
+				data = self[chrom][i]
 				randDataGenome = randGenome[chrom][0]
 				# If the chromosome is split in two
 				if chrom == firstChrom and data['chromStart'] < randDataGenome['chromStart']:
@@ -211,6 +212,8 @@ class Dataset(dict):
 			self.order.append( lastChrom )
 		# Delete the useless regions in the firstChrom
 		self[firstChrom] = [data for data in self[firstChrom] if data not in toDelete]
+
+
 		# Inverse coordinates if '-' strand
 		#for chrom in self.order:
 		#	randDataGenome = randGenome[chrom][0]

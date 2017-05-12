@@ -2,7 +2,7 @@
 from model import Dataset, Arguments
 import matplotlib.pyplot as plt
 import seaborn as sns
-import pprint, datetime
+import pprint, datetime, os.path
 #print datetime.datetime.now().time()
 
 ##############################################
@@ -57,20 +57,63 @@ def output_results(total_stats, fileB_name):
 ### Plot a graph of a distribution ###
 ######################################
 def plotDistributions(total_stats, args):
+	# Need to set manually
+	prcOver = '1'
+	nbRegion = '500'
+	bpTotal = '200 000'
+	suptitle = '%s%% overlap | %s regions | %s bp' %(prcOver, nbRegion, bpTotal)
+
 	sns.set(color_codes=True)
 	plt.figure(1)
 	for i in range(len(total_stats)):
 		if args['-l'] == 'all':
 			plt.subplot(3,3,i+1)
-		plt.suptitle('1% overlap | 1 region', fontsize=14, fontweight='bold')
-		comment = '%s = %g | expected value = %g' % (total_stats[i][4], total_stats[i][1], total_stats[i][3])
-		sns.distplot(total_stats[i][2], kde=True, rug=True)
+		plt.suptitle(suptitle, fontsize=14, fontweight='bold')
+		if total_stats[i][4] == 'Z-Score':
+			if total_stats[i][1] == 'NaN' or total_stats[i][1] == 0:
+				comment = 'Z-Score = NaN | Score Product observed = %g' %total_stats[i][3]
+			else:
+				comment = 'Z-Score =  %g | Score Product observed = %g' % (total_stats[i][1], total_stats[i][3])
+				sns.distplot(total_stats[i][2], kde=True, rug=True)
+		else:
+			if total_stats[i][1] == 'NaN' or total_stats[i][1] == 0:
+				comment = '%s expected = 0 | Observed value = %g' % (total_stats[i][4], total_stats[i][3])
+			else:
+				comment = '%s expected = %g | Observed value = %g' % (total_stats[i][4], total_stats[i][1], total_stats[i][3])
+				sns.distplot(total_stats[i][2], kde=True, rug=True)
 		plt.title(comment)
 	manager = plt.get_current_fig_manager()
 	manager.resize(*manager.window.maxsize())
 	plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1)
 	plt.show()
-	
+
+
+######################################################
+### Create a summary file of all the stats results ###
+######################################################
+def summaryStatsOutput(total_stats):
+	fileName = 'statsRes'
+	lines = []
+	# If the summary stats files already exists, read it
+	if os.path.exists(fileName):
+		FILE = open(fileName, 'r')
+		for line in FILE:
+			lines.append( line.rstrip('\n') )
+		FILE.close()
+	# Rewrite output file with former and new results
+	FILE = open(fileName, 'w')
+	for i in range(len(total_stats)):
+		if lines:
+			if total_stats[i][1] == 'NaN':
+				FILE.write( '%s, NaN\n' %lines[i] )
+			else:
+				FILE.write( '%s, %f\n' %(lines[i], total_stats[i][1]) )
+		else:
+			if total_stats[i][1] == 'NaN':
+				FILE.write( '%s\tNaN\n' %total_stats[i][4] )
+			else:
+				FILE.write( '%s\t%f\n' %(total_stats[i][4], total_stats[i][1]) )
+	FILE.close()
 
 # -----------------------------------------------------------------------------------------
 
@@ -140,6 +183,7 @@ if __name__ == '__main__':
 		output_results(total_stats, fileB_name)
 		# Create distribution graph of stats for each file 
 		if args['-p']: plotDistributions(total_stats, args)
+		if args['-l'] == 'all': summaryStatsOutput(total_stats)
 
 	if args['-c']:  FH.close()
 
