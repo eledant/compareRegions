@@ -14,19 +14,19 @@ def output_header(args, fileA):
 	if args['-l'] == 'def':
 		print "#2_fields\tabs(z-score)\tz-score\tp-val\tB_filename\tbp_overlap(obs/exp)\tB_bp\tB_regions\tA_region_overlaps(obs/exp)\tB_region_overlaps(obs/exp)\tregion_overlap_z-score\tregion_overlap_p-val"
 	elif args['-l'] == 'jac':
-		print "#2_fields\tJaccard similarity\tExpected Similarity\tB_filename"
+		print "#2_fields\tJaccard similarity\tExpected Similarity\tZ-Score\tB_filename"
 	elif args['-l'] == 'ebo':
-		print "#2_fields\tBase Overlap\tExpected Overlap\tB_filename"
+		print "#2_fields\tBase Overlap\tExpected Overlap\tZ-Score\tB_filename"
 	elif args['-l'] == 'ero':
-		print "#2_fields\tRegion Overlap\tExpected Overlap\tB_filename"
+		print "#2_fields\tRegion Overlap\tExpected Overlap\tZ-Score\tB_filename"
 	elif args['-l'] == 'pwe':
-		print "#2_fields\tPairwise Enrichment\tExpected Pairwise\tB_filename"
+		print "#2_fields\tPairwise Enrichment\tExpected Pairwise\tZ-Score\tB_filename"
 	elif args['-l'] == 'psn':
-		print "#2_fields\tPearson Corr Coeff\tExpected Coefficient\tB_filename"
+		print "#2_fields\tPearson Corr Coeff\tExpected Coefficient\tZ-Score\tB_filename"
 	elif args['-l'] == 'npm':
-		print "#2_fields\tNPMI\tExpected NPMI\tB_filename"
+		print "#2_fields\tNPMI\tExpected NPMI\tZ-Score\tB_filename"
 	elif args['-l'] == 'all':
-		print "#2_fields\tStatistic Test\tScore\tExpected Score"
+		print "#2_fields\tStatistic Test\tScore\tExpected Score\tZ-Score"
 
 
 #############################################
@@ -41,10 +41,7 @@ def output_results(total_stats, fileB_name):
 	# Sort the output lines by highest scores
 	if args['-s']:
 		for i in range(len(keys)):
-			if keys[i] != 'NaN':
-				keys[i] = abs(keys[i])
-			else:
-				keys[i] = 0
+			keys[i] = abs(keys[i])
 		lines = [x for (y,x) in sorted(zip(keys,lines), reverse=True)]
 	# Print lines
 	if args['-l'] == 'all':
@@ -56,32 +53,22 @@ def output_results(total_stats, fileB_name):
 ######################################
 ### Plot a graph of a distribution ###
 ######################################
-def plotDistributions(total_stats, args):
-	# Need to set manually
+def plotDistributions(total_stats, args, nbRegion, bpTotal):
+	# Need to set manually the title
 	prcOver = '1'
-	nbRegion = '500'
-	bpTotal = '200 000'
 	suptitle = '%s%% overlap | %s regions | %s bp' %(prcOver, nbRegion, bpTotal)
-
+	# Create 1 figure for each stat
 	sns.set(color_codes=True)
 	plt.figure(1)
 	for i in range(len(total_stats)):
 		if args['-l'] == 'all':
 			plt.subplot(3,3,i+1)
-		plt.suptitle(suptitle, fontsize=14, fontweight='bold')
-		if total_stats[i][4] == 'Z-Score':
-			if total_stats[i][1] == 'NaN' or total_stats[i][1] == 0:
-				comment = 'Z-Score = NaN | Score Product observed = %g' %total_stats[i][3]
-			else:
-				comment = 'Z-Score =  %g | Score Product observed = %g' % (total_stats[i][1], total_stats[i][3])
-				sns.distplot(total_stats[i][2], kde=True, rug=True)
-		else:
-			if total_stats[i][1] == 'NaN' or total_stats[i][1] == 0:
-				comment = '%s expected = 0 | Observed value = %g' % (total_stats[i][4], total_stats[i][3])
-			else:
-				comment = '%s expected = %g | Observed value = %g' % (total_stats[i][4], total_stats[i][1], total_stats[i][3])
-				sns.distplot(total_stats[i][2], kde=True, rug=True)
-		plt.title(comment)
+		plt.suptitle(suptitle, fontsize=18, fontweight='bold')
+		comment = '%s expected = %g | Observed value = %g' % (total_stats[i][4], total_stats[i][1], total_stats[i][3])
+		if total_stats[i][1] != 0:
+			sns.distplot(total_stats[i][2], kde=True, rug=False)
+		plt.title(comment, fontweight='bold')
+		plt.annotate('Z-Score = %g\nMin = %g\nMax = %g' %(total_stats[i][5], total_stats[i][6], total_stats[i][7]), xy=(0.80, 0.80), xycoords='axes fraction', bbox=dict(boxstyle="round", fc="w"))
 	manager = plt.get_current_fig_manager()
 	manager.resize(*manager.window.maxsize())
 	plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1)
@@ -92,7 +79,7 @@ def plotDistributions(total_stats, args):
 ### Create a summary file of all the stats results ###
 ######################################################
 def summaryStatsOutput(total_stats):
-	fileName = 'statsRes'
+	fileName = 'statsSummary.txt'
 	lines = []
 	# If the summary stats files already exists, read it
 	if os.path.exists(fileName):
@@ -103,16 +90,31 @@ def summaryStatsOutput(total_stats):
 	# Rewrite output file with former and new results
 	FILE = open(fileName, 'w')
 	for i in range(len(total_stats)):
-		if lines:
-			if total_stats[i][1] == 'NaN':
-				FILE.write( '%s, NaN\n' %lines[i] )
+		if total_stats[i][4] == 'Score Product':
+			if lines:
+				FILE.write( '%s, %f\n' %(lines[i], total_stats[i][5]) )
 			else:
-				FILE.write( '%s, %f\n' %(lines[i], total_stats[i][1]) )
+				FILE.write( '%s\t%f\n' %(total_stats[i][4], total_stats[i][5]) )
 		else:
-			if total_stats[i][1] == 'NaN':
-				FILE.write( '%s\tNaN\n' %total_stats[i][4] )
+			if lines:
+				FILE.write( '%s, %f\n' %(lines[i], total_stats[i][3]) )
 			else:
-				FILE.write( '%s\t%f\n' %(total_stats[i][4], total_stats[i][1]) )
+				FILE.write( '%s\t%f\n' %(total_stats[i][4], total_stats[i][3]) )
+	FILE.close()
+
+
+###########################################################
+### Create a summary file of all the stats distribution ###
+###########################################################
+def saveDistribution(total_stats, nbRegion):
+	fileName = 'distri_%d' % nbRegion
+	lines = []
+	FILE = open(fileName, 'w')
+	for i in range(len(total_stats)):
+		FILE.write( '%s\t' %total_stats[i][4] )
+		for j in range(len(total_stats[i][2])-1):
+			FILE.write( '%f,' %total_stats[i][2][j] )
+		FILE.write( '%f\n' %total_stats[i][2][-1] )
 	FILE.close()
 
 # -----------------------------------------------------------------------------------------
@@ -181,9 +183,11 @@ if __name__ == '__main__':
 		total_stats = matrix.calcStats(randMatrices, fileB_name, args)
 		# Print output_lines sorted output_keys (z_score or something else)
 		output_results(total_stats, fileB_name)
+		if args['-l'] == 'all': 
+			summaryStatsOutput(total_stats)
+			saveDistribution(total_stats, fileA.getSize()[0])
 		# Create distribution graph of stats for each file 
-		if args['-p']: plotDistributions(total_stats, args)
-		if args['-l'] == 'all': summaryStatsOutput(total_stats)
+		if args['-p']: plotDistributions(total_stats, args, fileA.getSize()[0], fileA.getSize()[1])
 
 	if args['-c']:  FH.close()
 
