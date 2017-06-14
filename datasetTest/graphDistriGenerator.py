@@ -12,12 +12,12 @@ folderName = 'distri'
 distriAll, scale, = {}, []
 titles = ['Score Product', 'Pearson', 'NPMI', 'Jaccard', 'BasesOver.', 'RegionsOver.', 'PairwiseEnri.']
 fileNames = os.listdir(folderPath+folderName)
-fileIDs = [int(x.split('_')[1]) for x in fileNames]
+fileIDs = [int(x.split('_')[-1]) for x in fileNames]
 fileIDs.sort()
-fileNames = ['distri_'+str(x) for x in fileIDs]
+fileNames = ['distri_250_'+str(x) for x in fileIDs]
 
 for fileName in fileNames:
-	scale.append( fileName.split('_')[1] )
+	scale.append( fileName.split('_')[-1] )
 	FILE = open(folderPath+folderName+'/'+fileName, 'r')
 	for line in FILE:
 		line = line.rstrip('\n')
@@ -33,7 +33,7 @@ for fileName in fileNames:
 
 
 plt.figure(1)
-suptitle = '1% overlap | different regions number | 20 000 000 bp'
+suptitle = '1% overlap | 250 regions in A / 10->6000 regions in B | 20 000 000bp | Distri Method 0 | Test4'
 plt.suptitle(suptitle, fontsize=18, fontweight='bold')
 i = 0
 cm = plt.get_cmap('gist_rainbow')
@@ -41,7 +41,8 @@ for statName in titles:
 	plt.subplot(3,3,i+1).set_color_cycle([cm(1.*j/len(distriAll[statName])) for j in range(len(distriAll[statName]))])
 	plt.title(statName, fontsize=14, fontweight='bold')
 	for x in range(len(distriAll[statName])):
-		sns.distplot(distriAll[statName][x], hist=False, rug=False, label=scale[x])
+		if len(set(distriAll[statName][x])) > 1:
+			sns.distplot(distriAll[statName][x], hist=False, rug=False, label=scale[x])
 	plt.legend(ncol=2)
 	i += 1
 	
