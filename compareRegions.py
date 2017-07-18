@@ -2,31 +2,17 @@
 from model import Dataset, Arguments
 import matplotlib.pyplot as plt
 import seaborn as sns
-import pprint, datetime, os.path
+import pprint, datetime, os.path, math
 #print datetime.datetime.now().time()
 
 ##############################################
 ### Print output header with columns names ###
 ##############################################
-def output_header(args, fileA):
-	totalRegions, totalBP = fileA.getSize()
-	print "#1_query\tA_filename=\"",args['<A_file>'],"\"\tA_bp=",totalBP,"\tA_regions=",totalRegions
-	if args['-l'] == 'def':
-		print "#2_fields\tabs(z-score)\tz-score\tp-val\tB_filename\tbp_overlap(obs/exp)\tB_bp\tB_regions\tA_region_overlaps(obs/exp)\tB_region_overlaps(obs/exp)\tregion_overlap_z-score\tregion_overlap_p-val"
-	elif args['-l'] == 'jac':
-		print "#2_fields\tJaccard similarity\tExpected Similarity\tZ-Score\tB_filename"
-	elif args['-l'] == 'ebo':
-		print "#2_fields\tBase Overlap\tExpected Overlap\tZ-Score\tB_filename"
-	elif args['-l'] == 'ero':
-		print "#2_fields\tRegion Overlap\tExpected Overlap\tZ-Score\tB_filename"
-	elif args['-l'] == 'pwe':
-		print "#2_fields\tPairwise Enrichment\tExpected Pairwise\tZ-Score\tB_filename"
-	elif args['-l'] == 'psn':
-		print "#2_fields\tPearson Corr Coeff\tExpected Coefficient\tZ-Score\tB_filename"
-	elif args['-l'] == 'npm':
-		print "#2_fields\tNPMI\tExpected NPMI\tZ-Score\tB_filename"
-	elif args['-l'] == 'all':
-		print "#2_fields\tStatistic Test\tScore\tExpected Score\tZ-Score"
+def output_header(args, fileA_name):
+	if args['-l'] != 'all':
+		print "#1: z-score\tmean\toverlap/genome\tsizeA: overlapA/nbA\tsizeB: overlapB/nbB\tdatasetB"
+	else:
+		print "datasetB\tStatName\tScore\tZ-Score\tMean"
 
 
 #############################################
@@ -45,7 +31,7 @@ def output_results(total_stats, fileB_name):
 		lines = [x for (y,x) in sorted(zip(keys,lines), reverse=True)]
 	# Print lines
 	if args['-l'] == 'all':
-		print ">>>", fileB_name.split('/')[-1]
+		print ">>> %s" %fileB_name.split('/')[-1]
 	for line in lines:
 		print line
 
@@ -53,10 +39,10 @@ def output_results(total_stats, fileB_name):
 ######################################
 ### Plot a graph of a distribution ###
 ######################################
-def plotDistributions(total_stats, args, nbRegion, bpTotal):
+def plotDistributions(total_stats, args, nbRegionA, nbRegionB, bpTotalA, bpTotalB):
 	# Need to set manually the title
 	prcOver = '1'
-	suptitle = '%s%% overlap | %s regions | %s bp' %(prcOver, nbRegion, bpTotal)
+	suptitle = '%s%% overlap | %s/%s regions | %s/%s bp | Random region/overlap size | Test 8' %(prcOver, nbRegionA, nbRegionB, bpTotalA, bpTotalB)
 	# Create 1 figure for each stat
 	sns.set(color_codes=True)
 	plt.figure(1)
@@ -65,7 +51,8 @@ def plotDistributions(total_stats, args, nbRegion, bpTotal):
 			plt.subplot(3,3,i+1)
 		plt.suptitle(suptitle, fontsize=18, fontweight='bold')
 		comment = '%s expected = %g | Observed value = %g' % (total_stats[i][4], total_stats[i][1], total_stats[i][3])
-		if total_stats[i][1] != 0:
+		# Check if matrix is not singular
+		if len(set(total_stats[i][2])) > 1:
 			sns.distplot(total_stats[i][2], kde=True, rug=False)
 		plt.title(comment, fontweight='bold')
 		plt.annotate('Z-Score = %g\nMin = %g\nMax = %g' %(total_stats[i][5], total_stats[i][6], total_stats[i][7]), xy=(0.80, 0.80), xycoords='axes fraction', bbox=dict(boxstyle="round", fc="w"))
@@ -78,7 +65,7 @@ def plotDistributions(total_stats, args, nbRegion, bpTotal):
 ######################################################
 ### Create a summary file of all the stats results ###
 ######################################################
-def summaryStatsOutput(total_stats):
+def summaryStatsOutput(total_stats, nbRegionA, nbRegionB, bpTotalA, bpTotalB, genomeRegion, genomeSize, overlapSize):
 	fileName = 'statsSummary.txt'
 	lines = []
 	# If the summary stats files already exists, read it
@@ -91,23 +78,24 @@ def summaryStatsOutput(total_stats):
 	FILE = open(fileName, 'w')
 	for i in range(len(total_stats)):
 		if total_stats[i][4] == 'Score Product':
+			score = total_stats[i][5]
 			if lines:
-				FILE.write( '%s, %f\n' %(lines[i], total_stats[i][5]) )
+				FILE.write( '%s, %f\n' %(lines[i], score) )
 			else:
-				FILE.write( '%s\t%f\n' %(total_stats[i][4], total_stats[i][5]) )
+				FILE.write( 'Z-Score\t%f\n' %score )
 		else:
 			if lines:
-				FILE.write( '%s, %f\n' %(lines[i], total_stats[i][3]) )
+				FILE.write( '%s, %g\n' %(lines[i], total_stats[i][3]) )
 			else:
-				FILE.write( '%s\t%f\n' %(total_stats[i][4], total_stats[i][3]) )
+				FILE.write( '%s\t%g\n' %(total_stats[i][4], total_stats[i][3]) )
 	FILE.close()
 
 
 ###########################################################
 ### Create a summary file of all the stats distribution ###
 ###########################################################
-def saveDistribution(total_stats, nbRegion):
-	fileName = 'distri_%d' % nbRegion
+def saveDistribution(total_stats, nbRegionA, nbRegionB, bpTotalA, bpTotalB):
+	fileName = 'distri_%s_%s' %(bpTotalA, bpTotalB)
 	lines = []
 	FILE = open(fileName, 'w')
 	for i in range(len(total_stats)):
@@ -138,7 +126,7 @@ if __name__ == '__main__':
 	if args['-v'] in ['all', 'fileA']: fileA.printDataset('fileA')
 
 	# Print output header for the <A_file>
-	output_header(args, fileA)
+	output_header(args, args['<A_file>'])
 
 	# Foreach <B_files>
 	if args['-c']: FH = open('testFiles/summary', 'w')
@@ -174,7 +162,7 @@ if __name__ == '__main__':
 				randMatrices[-1].addGenomeSize( refGenome.getSize()[1] )
 
 				# Print a new line in the summary file
-				res = [randMatrices[-1].getOverA(),randMatrices[-1].getOverB(), randMatrices[-1].getOverlapsSize()]
+				res = [randMatrices[-1].getOverA(),randMatrices[-1].getOverB(), randMatrices[-1].overlapSize]
 				if args['-c']: FH.write( '%s\t\trandFileA_%d randFileB_%d\t\tbp_overlap: %d\t\tA_region_overlaps: %d\t\tB_region_overlaps: %d\n' \
 						%(fileB_name, mRandom, mnRandom, res[2], res[0], res[1]) )
 				mnRandom += 1
@@ -184,10 +172,11 @@ if __name__ == '__main__':
 		# Print output_lines sorted output_keys (z_score or something else)
 		output_results(total_stats, fileB_name)
 		if args['-l'] == 'all': 
-			summaryStatsOutput(total_stats)
-			saveDistribution(total_stats, fileA.getSize()[0])
+			summaryStatsOutput(total_stats, fileA.getSize()[0], fileB.getSize()[0], fileA.getSize()[1], fileB.getSize()[1], refGenome.getSize()[0], refGenome.getSize()[1], matrix.overlapSize)
+			saveDistribution(total_stats, fileA.getSize()[0], fileB.getSize()[0], fileA.getSize()[1], fileB.getSize()[1])
 		# Create distribution graph of stats for each file 
-		if args['-p']: plotDistributions(total_stats, args, fileA.getSize()[0], fileA.getSize()[1])
+		if args['-p']: plotDistributions(total_stats, args, fileA.getSize()[0], fileB.getSize()[0], fileA.getSize()[1], fileB.getSize()[1])
 
 	if args['-c']:  FH.close()
+
 

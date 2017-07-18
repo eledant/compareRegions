@@ -13,6 +13,7 @@ Options:
 	-s		  Sort the output by score				[default: False]
 	-p		  Plot the results in a graph				[default: False]
 	-c		  Create a summary file of the comparaison		[default: False]
+	-t <arg>	  Set the number of threads				[default: 1]
 """
 from docopt import docopt
 import re

@@ -283,6 +283,7 @@ class Dataset(dict):
 
 		# Add split regions to the matrix object
 		matrix.addSplitRegions( splitRegionA, splitRegionB )
+		matrix.setOverlapMeasures()
 		return matrix
 
 # -----------------------------------------------------------------------------------------
