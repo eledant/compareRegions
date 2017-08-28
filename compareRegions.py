@@ -173,7 +173,7 @@ if __name__ == '__main__':
 		output_results(total_stats, fileB_name)
 		if args['-l'] == 'all': 
 			summaryStatsOutput(total_stats, fileA.getSize()[0], fileB.getSize()[0], fileA.getSize()[1], fileB.getSize()[1], refGenome.getSize()[0], refGenome.getSize()[1], matrix.overlapSize)
-			saveDistribution(total_stats, fileA.getSize()[0], fileB.getSize()[0], fileA.getSize()[1], fileB.getSize()[1])
+			#saveDistribution(total_stats, fileA.getSize()[0], fileB.getSize()[0], fileA.getSize()[1], fileB.getSize()[1])
 		# Create distribution graph of stats for each file 
 		if args['-p']: plotDistributions(total_stats, args, fileA.getSize()[0], fileB.getSize()[0], fileA.getSize()[1], fileB.getSize()[1])
 

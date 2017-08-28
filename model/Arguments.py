@@ -14,6 +14,7 @@ Options:
 	-p		  Plot the results in a graph				[default: False]
 	-c		  Create a summary file of the comparaison		[default: False]
 	-t <arg>	  Set the number of threads				[default: 1]
+	-f		  Set lower tail option of pBinom to True		[default: False]
 """
 from docopt import docopt
 import re

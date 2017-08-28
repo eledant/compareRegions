@@ -35,6 +35,7 @@ class OverlapMatrix(list):
 		self.splitRegionA = list(set(_splitRegionA))
 		self.splitRegionB = list(set(_splitRegionB))
 
+
 	#############################
 	### Set the overlaps size ###
 	#############################
@@ -42,7 +43,8 @@ class OverlapMatrix(list):
 		self.overlapSize, self.overlapsRegionNumber = 0, 0
 		for i in range(len(self)):
 			self.overlapSize += self[i]
-			self.overlapsRegionNumber += 1		
+			self.overlapsRegionNumber += 1
+	
 
 	######################################################
 	### Return the number of A regions with an overlap ###
@@ -113,7 +115,7 @@ class OverlapMatrix(list):
 	################################################
 	### Return the z-score, p-value, mean and sd ###
 	################################################
-	def getZScore(self, value, distribution):		
+	def getZScore(self, value, distribution):
 		mean = np.mean(np.array(distribution))
 		sd = np.std(np.array(distribution))
 		if sd != 0:
@@ -302,14 +304,14 @@ class OverlapMatrix(list):
 	######################################################################################
 	def pBinom(self, randMatrices, fileB_name, args):
 		pbinomTest = ro.r['pbinom']
-		pbinom = -float( pbinomTest( self.overlapsRegionNumber, self.dataA_nb, self.dataB_size/self.genomeSize, lower_tail=True, log_p=True ).r_repr() ) / math.log(10)
+		pbinom = -float( pbinomTest( self.overlapsRegionNumber-1, self.dataA_nb, self.dataB_size/self.genomeSize, lower_tail=args['-f'], log_p=True ).r_repr() ) / math.log(10)
 		pbinom_l = []
 		for m in randMatrices:
-			pbinom_l.append( -float( pbinomTest( m.overlapsRegionNumber, m.dataA_nb, m.dataB_size/m.genomeSize, lower_tail=True, log_p=True ).r_repr() ) / math.log(10) )
+			pbinom_l.append( -float( pbinomTest( m.overlapsRegionNumber, m.dataA_nb, m.dataB_size/m.genomeSize, lower_tail=args['-f'], log_p=True ).r_repr() ) / math.log(10) )
 		pbinom_mean = sum(pbinom_l) / len(pbinom_l)
 		zscore = 0
-		pbinom_min = -float( pbinomTest( 0, self.dataA_nb, self.dataB_size/self.genomeSize, lower_tail=True, log_p=True ).r_repr() ) / math.log(10)
-		pbinom_max = -float( pbinomTest( self.dataA_nb-1, self.dataA_nb, self.dataB_size/self.genomeSize, lower_tail=True, log_p=True ).r_repr() ) / math.log(10)
+		pbinom_min = -float( pbinomTest( 0, self.dataA_nb, self.dataB_size/self.genomeSize, lower_tail=args['-f'], log_p=True ).r_repr() ) / math.log(10)
+		pbinom_max = -float( pbinomTest( self.dataA_nb-1, self.dataA_nb, self.dataB_size/self.genomeSize, lower_tail=args['-f'], log_p=True ).r_repr() ) / math.log(10)
 		if args['-l'] == 'all':
 			output = "\tpBinom\t%g\t%g\t%g" %(pbinom, zscore, pbinom_mean)
 		else:
